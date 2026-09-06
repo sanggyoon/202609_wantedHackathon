@@ -1,0 +1,36 @@
+# ── OS ──
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ── Editors/IDEs ──
+.vscode/
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*~
+
+# ── 환경변수 / 시크릿 ──
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# ── 로그 / 임시파일 ──
+*.log
+logs/
+tmp/
+*.tmp
+
+# ── 압축/빌드 산출물 (범용) ──
+*.zip
+*.tar.gz
+dist/
+build/
