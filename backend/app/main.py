@@ -4,7 +4,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.health import router as health_router
 from app.core.config import settings
 
-app = FastAPI(title="mediation-backend")
+app = FastAPI(
+    title="mediation-backend",
+    docs_url="/api/docs",
+    openapi_url="/api/openapi.json",
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -14,4 +18,4 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(health_router)
+app.include_router(health_router, prefix="/api")

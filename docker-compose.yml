@@ -9,6 +9,17 @@ services:
     networks:
       - proxy
 
+  backend:
+    build: ./backend
+    image: ghcr.io/sanggyoon/wanted-backend:${IMAGE_TAG:-latest}
+    environment:
+      - VIRTUAL_HOST=${VIRTUAL_HOST}
+      - VIRTUAL_PATH=/api/
+      - LETSENCRYPT_HOST=${LETSENCRYPT_HOST}
+    restart: always
+    networks:
+      - proxy
+
 networks:
   proxy:
     external: true
