@@ -1,2 +1,7 @@
 export type Statement = { incident: string; feeling: string; wish: string };
-export type Apology = { body: string; understood: string; promise: string };
+export type Apology = {
+  understood: string;
+  admitted: string;
+  body: string;
+  promise: string;
+};

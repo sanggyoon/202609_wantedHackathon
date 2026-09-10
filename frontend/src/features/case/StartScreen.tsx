@@ -3,36 +3,35 @@ export function StartScreen({ onStart }: { onStart: () => void }) {
   return (
     <>
       <section className="hero">
-        <small>마음을 전하는 작은 사건</small>
-        <div className="paper" aria-hidden="true">
-          ♡
+        <div className="paper doc" aria-hidden="true">
+          고소장
         </div>
+        <small>
+          정말 많은 일이 있었군요.
+          <br />
+          저에게 편히 다 말해보세요.
+        </small>
         <h1>
-          서운한 마음,
+          밤톨이 당신의
           <br />
-          귀엽게 접수할게요.
+          고소를 도와드릴게요.
         </h1>
-        <p>
-          AI와 이야기하며 마음을 정리하고,
-          <br />
-          귀여운 고소장으로 상대에게 전해보세요.
-        </p>
-        <Button onClick={onStart}>귀엽게 고소장 만들기 ↗</Button>
+        <Button onClick={onStart}>시작하기 ↗</Button>
         <small>로그인 없이 시작 · 실제 법률 서비스가 아니에요</small>
       </section>
       <div className="steps">
         <p>
-          <b>01 이야기하기</b>사건, 감정, 바라는 점을 정리해요.
+          <b>01 진술하기</b>사건, 감정, 바라는 점을 정리해요.
         </p>
         <p>
-          <b>02 마음 전하기</b>하나의 링크로 고소장을 전해요.
+          <b>02 소환하기</b>고소장 한 장을 링크로 전해요.
         </p>
         <p>
-          <b>03 함께 읽기</b>사과 또는 맞고소로 마음을 나눠요.
+          <b>03 선고받기</b>사과 또는 맞고소로 마음을 나눠요.
         </p>
       </div>
       <p className="notice">
-        결과물은 7일 후 만료돼요. 지금은 저장·공유되지 않는 와이어프레임
+        판결문(결과물)은 7일 후 파기돼요. 지금은 저장·공유되지 않는 와이어프레임
         체험입니다.
       </p>
     </>

@@ -4,34 +4,33 @@ export default function Home() {
   return (
     <AppShell>
       <section className="hero">
-        <small>마음을 전하는 작은 사건</small>
-        <div className="paper" aria-hidden="true">
-          ♡
+        <div className="paper doc" aria-hidden="true">
+          고소장
         </div>
+        <small>
+          정말 많은 일이 있었군요.
+          <br />
+          저에게 편히 다 말해보세요.
+        </small>
         <h1>
-          서운한 마음,
+          밤톨이 당신의
           <br />
-          귀엽게 접수할게요.
+          고소를 도와드릴게요.
         </h1>
-        <p>
-          말하기 어려웠던 그 일을 정리하고,
-          <br />
-          서로의 마음을 한 장씩 펼쳐보세요.
-        </p>
         <Link className="button" href="/wireframe">
-          귀엽게 고소장 만들기 ↗
+          시작하기 ↗
         </Link>
-        <small>와이어프레임 체험 · 가상 데이터</small>
+        <small>와이어프레임 체험 · 가상 사건 기록</small>
       </section>
       <div className="steps">
         <p>
-          <b>01 이야기하기</b>서운했던 일과 마음을 정리해요.
+          <b>01 진술하기</b>무슨 일이 있었는지 중재자 밤톨에게 편히 털어놔요.
         </p>
         <p>
-          <b>02 마음 전하기</b>고소장으로 내 생각을 전달해요.
+          <b>02 소환하기</b>고소장 한 장을 링크로 상대에게 보내요.
         </p>
         <p>
-          <b>03 함께 읽기</b>사과하거나 서로의 관점을 나눠요.
+          <b>03 선고받기</b>사과하거나 맞고소하며 서로의 마음을 확인해요.
         </p>
       </div>
     </AppShell>
