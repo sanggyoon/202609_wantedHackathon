@@ -8,7 +8,7 @@
 >
 > 기준: PRD §7 단일 링크 설계, §11 데이터 구조, §12 데이터 수명, §13 AI 안전 원칙
 >
-> 구현 명세: `docs/superpowers/specs/2026-09-12-supabase-schema-design.md`
+> 구현 명세: `docs/Supabase_Schema_Design.md`
 
 ---
 
@@ -488,7 +488,7 @@ v0.1의 미결 8건 중 5건이 확정되었다. 남은 항목은 다음과 같�
 
 | 문서 요소 | 구현 위치 |
 | --- | --- |
-| D1~D4 테이블 정의, 제약, 인덱스 | `supabase/migrations/` (설계 근거는 `docs/superpowers/specs/2026-09-12-supabase-schema-design.md`) |
+| D1~D4 테이블 정의, 제약, 인덱스 | `supabase/migrations/` (설계 근거는 `docs/Supabase_Schema_Design.md`) |
 | RLS — `service_role` 단독 접근 | 같은 마이그레이션. 브라우저는 Supabase에 직접 붙지 않음 |
 | `purge_expired_cases()` + `pg_cron` 스케줄 | 같은 마이그레이션 |
 | 토큰 해시 생성·검증, lazy 만료 검사, 상태 전이 | `backend/app/` (FastAPI) |
