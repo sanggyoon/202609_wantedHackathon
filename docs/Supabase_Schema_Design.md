@@ -144,11 +144,13 @@ create table statement_cards (
   created_at           timestamptz    not null default now(),
   unique (case_id, side)
 );
-
-create index statement_cards_case_id_idx on statement_cards (case_id);
 ```
 
 `different_viewpoint`만 nullable이다. PRD §11에서 `text/null`로 표기된 유일한 필드다.
+
+`case_id` 단독 인덱스는 두지 않는다. `UNIQUE(case_id, side)`가 만드는 btree 인덱스의
+선두 컬럼이 `case_id`이므로, `where case_id = ?` 조회와 FK cascade 삭제를 이미 커버한다.
+별도 인덱스는 쓰기 비용만 늘리는 중복이다.
 
 ### 4.4 apologies
 
