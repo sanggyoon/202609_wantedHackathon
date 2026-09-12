@@ -16,8 +16,11 @@ export function PreviewScreen({
   const [edit, setEdit] = useState(false);
   return (
     <>
-      <Heading label="내용 확인" title="이 마음, 맞나요?">
-        내 의도와 다른 부분은 직접 고칠 수 있어요.
+      <Heading
+        label={side === "A" ? "고소장 검토" : "맞고소장 검토"}
+        title="이대로 접수할까요?"
+      >
+        제가 정리한 내용이 마음과 조금 다르면, 언제든 직접 고쳐도 괜찮아요.
       </Heading>
       {edit ? (
         <div className="panel">
@@ -49,7 +52,7 @@ export function PreviewScreen({
           disabled={Object.values(value).some((v) => !v.trim())}
           onClick={() => onConfirm(value)}
         >
-          {side === "A" ? "고소장 확정" : "맞고소 제출"}
+          {side === "A" ? "고소장 접수하기" : "맞고소장 제출하기"}
         </Button>
       </div>
     </>

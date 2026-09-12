@@ -17,31 +17,22 @@ export function ConversationScreen({
   return (
     <>
       <Heading
-        label={`${side}의 이야기 · ${Math.min(answers.length + 1, 3)} / 3`}
+        label={`${side === "A" ? "원고 진술" : "피고 진술"} · ${Math.min(
+          answers.length + 1,
+          3,
+        )} / 3`}
         title={
-          side === "A" ? "어떤 일이 서운했나요?" : "당신의 이야기도 들려주세요."
+          side === "A"
+            ? "무슨 일을 고소하고 싶으신가요?"
+            : "이번엔 당신의 이야기를 들려주세요."
         }
       >
-        그때의 마음을 한 가지씩 정리해요.
+        그날의 이야기, 저에게 편히 들려주세요.
       </Heading>
-      <div className="progress">
-        {questions.map((q, i) => (
-          <span key={q} className={i < answers.length ? "filled" : ""} />
-        ))}
-      </div>
-      <details className="panel">
-        <summary>현재 파악한 내용 · {answers.length}/3</summary>
-        {["사건 내용", "감정과 이유", "바라는 점"].map((label, i) => (
-          <div key={label}>
-            <h3>{label}</h3>
-            <p>{answers[i] || "아직 듣지 못했어요."}</p>
-          </div>
-        ))}
-      </details>
       <div className="chat">
         {questions.slice(0, Math.min(answers.length + 1, 3)).map((q, i) => (
           <div key={q}>
-            <p className="assistant">♡　{q}</p>
+            <p className="assistant">🌰　{q}</p>
             {answers[i] && (
               <div className="reply">
                 <p>{answers[i]}</p>
@@ -51,7 +42,7 @@ export function ConversationScreen({
                     setInput(answers[i]);
                   }}
                 >
-                  답변 수정
+                  진술 수정
                 </button>
               </div>
             )}
@@ -73,18 +64,16 @@ export function ConversationScreen({
             setEdit(null);
           }}
         >
-          <label htmlFor="answer">
-            {edit === null ? "내 이야기" : "답변 수정"}
-          </label>
+          <label htmlFor="answer">{edit === null ? "내 진술" : "진술 수정"}</label>
           <textarea
             id="answer"
             rows={3}
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="편하게 적어주세요."
+            placeholder="중재자 밤톨에게 편하게 말해보세요."
           />
           <Button type="submit" disabled={!input.trim()}>
-            답변 보내기 ↑
+            진술하기 ↑
           </Button>
         </form>
       ) : (
@@ -97,12 +86,11 @@ export function ConversationScreen({
             })
           }
         >
-          정리한 내용 확인하기 →
+          {side === "A" ? "고소장 초안 확인하기 →" : "맞고소장 초안 확인하기 →"}
         </Button>
       )}
       <Notice>
-        가상 대화로 정해진 질문을 보여드립니다. 화면을 나가거나 새로고침하면
-        대화가 사라집니다.
+        지금은 가상 진술이에요. 화면을 나가거나 새로고침하면 진술이 사라집니다.
       </Notice>
     </>
   );
