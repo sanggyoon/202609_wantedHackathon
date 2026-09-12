@@ -6,7 +6,7 @@
 
 > 인원: 동년, 상균, 예진, 승희
 
-> 최종 수정: 2026-09-10 · 상태: Accepted
+> 최종 수정: 2026-09-12 · 상태: Accepted
 
 이 문서는 "왜 이렇게 정했는가"를 남긴다. 새 팀원은 이 문서만 읽으면
 구조와 그 이유를 이해할 수 있어야 한다. **제품 방향·기능 기획은 이 문서가 아니라
@@ -207,11 +207,34 @@ Actions의 `GITHUB_TOKEN`으로 push는 무설정. 서버 pull은 `read:packages
 
 ---
 
-## 10. DB 마이그레이션 도구 — Supabase GitHub 연동
+## 10. DB 마이그레이션 도구 — Supabase CLI (`supabase db push`)
 
-**결정.** Alembic(SQLAlchemy 기반) 대신 **Supabase의 GitHub 연동**(`supabase/migrations/*.sql` +
-GitHub App)을 사용한다. `main` push 시 Supabase가 자동으로 마이그레이션을 적용하고, PR마다
-격리된 Preview Branch(임시 DB)를 생성한다.
+> 2026-09-12 수정: 최초엔 "Supabase GitHub 연동이 `main` push 시 자동 적용"으로 결정했으나,
+> **그 기능이 무료 플랜에서 동작하지 않음을 확인**해 적용 방식만 번복함. 마이그레이션 형식
+> (`supabase/migrations/*.sql`)과 Alembic 기각 판단은 유지. 아래가 현재 결정이며, 번복 경위는
+> "발견 경위"에 기록.
+
+**결정.** Alembic(SQLAlchemy 기반) 대신 **Supabase CLI**로 `supabase/migrations/*.sql`을
+관리하고, **사람이 `supabase db push`를 실행**해 원격 DB에 적용한다.
+
+### 발견 경위 — 자동 적용은 동작하지 않았다
+
+GitHub 연동을 켜면 `main` push 시 Supabase가 마이그레이션을 자동 적용하고 PR마다 Preview
+Branch를 만든다고 보고 채택했으나, **두 기능 모두 Branching에 속하고 Branching은 Pro 플랜
+이상**이다. 무료 플랜에서는 연동을 켜도 `supabase/` 디렉터리를 스캐폴딩해주는 것까지가 전부다.
+
+그 결과 **2026-09-10 연동 시점부터 09-12까지 마이그레이션이 한 번도 적용되지 않았다.**
+`init.sql`(`pgcrypto` 확장 한 줄)뿐이어서 아무도 눈치채지 못했다. 09-12에 스키마 PR을 머지한
+뒤 확인하는 과정에서 발견했다 — `supabase_migrations.schema_migrations` 테이블 자체가
+존재하지 않았고(= 적용 이력 0), `public` 테이블이 0개였다.
+
+문제를 가린 우연이 하나 있었다. `pgcrypto`는 조회 시 이미 활성 상태였는데, 이는 `init.sql`이
+적용된 증거가 아니라 **Supabase가 새 프로젝트에 기본 제공하는 것**이었다. 마이그레이션이
+의도한 것과 같은 확장이라 "적용된 것처럼" 보였다.
+
+**교훈.** 마이그레이션 적용 여부는 결과 객체의 존재로 판단하지 말고
+`supabase_migrations.schema_migrations`로 판단한다. 이 테이블은 적용이 한 번이라도
+일어나면 생성되므로, 부재 자체가 "한 번도 적용 안 됨"의 확정 증거다.
 
 **대안과 트레이드오프.**
 
@@ -219,12 +242,12 @@ GitHub App)을 사용한다. `main` push 시 Supabase가 자동으로 마이그�
 |---|---|---|
 | 마이그레이션 작성 언어 | Python (SQLAlchemy 모델에서 자동 추론) | 순수 SQL 파일 |
 | 적용 위치 | 백엔드(FastAPI)에 라이브러리로 편입 | Supabase 자체 기능 (CLI + GitHub App) |
-| 적용 방식 | 서버에서 `alembic upgrade head` 직접 실행 — 배포 파이프라인(`deploy.yml`)에 마이그레이션 스텝을 새로 추가해야 함 | `main` push → Supabase가 자동 적용, 기존 파이프라인 무수정 |
-| PR별 격리 테스트 | 없음 (직접 구현 필요) | Preview Branch로 PR마다 임시 DB 자동 생성 |
+| 적용 방식 | 서버에서 `alembic upgrade head` 직접 실행 — 배포 파이프라인(`deploy.yml`)에 마이그레이션 스텝을 새로 추가해야 함 | 로컬에서 `supabase db push` 수동 실행 (무료 플랜에서 자동 적용 불가) |
+| PR별 격리 테스트 | 없음 (직접 구현 필요) | 없음 — Preview Branch는 Pro 플랜 전용이라 이 프로젝트에선 사용 불가 |
 | 백엔드 요구사항 | SQLAlchemy ORM을 실제로 도입해야 함 (현재 백엔드엔 DB 라이브러리 자체가 없어 처음부터 새로 얹는 작업) | 없음 — ORM 없이 raw SQL/Supabase 클라이언트만으로도 가능 |
 | 학습 곡선 | ORM 모델 설계 + Alembic 커맨드(`revision`, autogenerate 특이사항) | SQL 파일 작성 — 별도 도구 학습 거의 불필요 |
-| 이식성 | 어떤 Postgres에도 동일 동작, Supabase 종속 없음 | SQL 자체는 이식 가능하나 "자동 적용" 기능은 Supabase 전용 |
-| 신뢰 표면 | 없음 (백엔드 내부 도구) | Supabase GitHub App이 private repo에 접근 권한을 가짐 |
+| 이식성 | 어떤 Postgres에도 동일 동작, Supabase 종속 없음 | SQL 대부분은 이식 가능하나, `anon`·`authenticated` 롤에 대한 `revoke`는 Supabase 전용 |
+| 신뢰 표면 | 없음 (백엔드 내부 도구) | 개발자 로컬에 Supabase access token + DB 비밀번호 보관 |
 
 **근거.** 이 프로젝트 맥락에서 Alembic의 비용이 이득보다 크다고 판단:
 
@@ -232,12 +255,31 @@ GitHub App)을 사용한다. `main` push 시 Supabase가 자동으로 마이그�
   SQLAlchemy부터 새로 얹는 작업. 반면 Supabase 연동은 추가 백엔드 의존성이 0.
 - 팀에 주니어가 섞여 있음(§2 근거와 동일 맥락) — ORM 모델 → 마이그레이션 자동생성이라는
   추상화 단계보다 SQL 파일을 직접 보고 쓰는 쪽이 진입장벽이 낮음.
-- 이미 안정적으로 동작 중인 CI/CD 배포 파이프라인(GHCR + Tailscale SSH)에 마이그레이션
-  실행 스텝을 새로 끼워 넣지 않아도 됨 — push만 하면 스키마와 배포가 함께 감.
 - §6에서 Supabase Cloud를 택한 근거("관리형으로 운영 부담 최소화, 종료 시 통째로 삭제")와
   방향이 일치함 — 백엔드 쪽에 마이그레이션 인프라를 쌓지 않는 편이 동일 철학.
-- GitHub App 접근 권한은 새로운 리스크 유형이 아님 — 이미 GHCR·Tailscale 등 서드파티
-  연동을 여러 개 쓰고 있는 프로젝트.
+- ~~이미 동작 중인 CI/CD 파이프라인에 마이그레이션 실행 스텝을 끼워 넣지 않아도 됨~~
+  → **이 근거는 더 이상 성립하지 않는다.** 자동 적용이 안 되므로 사람이 `db push`를 하거나
+  파이프라인에 스텝을 추가해야 하며, 후자를 택하면 Alembic을 기각할 때 든 단점을 그대로 진다.
+  남은 우위는 "백엔드 의존성 0"과 "SQL 직접 작성"이고, 3주 일정에서는 이 둘만으로도 Alembic
+  도입 비용(SQLAlchemy 신규 편입)을 넘지 못한다고 판단해 결정 자체는 유지함.
+
+**현재 운영 방식.** 마이그레이션 파일을 추가한 뒤 다음을 실행한다. 로컬 Docker 스택은 필요
+없다 — 원격에 직접 적용하는 명령이다.
+
+```bash
+supabase db push              # 미적용 마이그레이션만 순서대로 적용
+supabase migration list       # 로컬·원격 버전 일치 확인
+supabase db diff --linked     # "No schema changes found"면 drift 없음
+```
+
+**주의 — 머지만으로는 아무 일도 일어나지 않는다.** `main`에 머지해도 DB는 바뀌지 않는다.
+마이그레이션을 추가한 사람이 `db push`까지 해야 한다. 이 단계를 빠뜨리면 코드와 스키마가
+어긋나고, 다른 팀원은 "내 쪽에서만 안 되는" 증상을 만난다.
+
+**미해결 — 자동화 여부.** 사람이 매번 실행하는 방식은 잊기 쉽다. `deploy.yml`에
+`supabase db push` 스텝을 추가하면 해소되지만, 그러면 위에서 말한 "파이프라인 무수정" 이점이
+완전히 사라지고 CI에 Supabase access token·DB 비밀번호를 시크릿으로 넣어야 한다.
+착수 여부는 팀 논의 필요.
 
 ---
 
@@ -281,6 +323,7 @@ GitHub App)을 사용한다. `main` push 시 Supabase가 자동으로 마이그�
 ## 미해결/후속 결정
 
 - 인증(로그인) 방식 — 세션 vs JWT, 소셜 로그인 여부 ❓
+- 마이그레이션 적용 자동화 — `deploy.yml`에 `supabase db push` 스텝을 넣을지 ❓ (§10 참고)
 - LLM 제공자 — ❓ (OpenAI/Anthropic/기타), 비용·레이트리밋 고려
 
-~~DB 마이그레이션 도구~~ → §10에서 Supabase GitHub 연동으로 결정 (2026-09-10)
+~~DB 마이그레이션 도구~~ → §10에서 결정 (2026-09-10), 적용 방식은 Supabase CLI로 번복 (2026-09-12)
