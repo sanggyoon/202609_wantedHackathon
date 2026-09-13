@@ -29,6 +29,18 @@ export function StatementCard({
       </p>
       <h3>원하는 것</h3>
       <p>{data.wish}</p>
+      {data.expectation && (
+        <>
+          <h3>그때 기대했던 점</h3>
+          <p>{data.expectation}</p>
+        </>
+      )}
+      {data.guess && (
+        <>
+          <h3>사실로 확인되지 않은 추측</h3>
+          <p>{data.guess}</p>
+        </>
+      )}
     </article>
   );
 }

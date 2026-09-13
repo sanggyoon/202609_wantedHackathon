@@ -18,7 +18,10 @@ export function ApologyScreen({
   const [preview, setPreview] = useState(false);
   return (
     <>
-      <Heading label="화해 시도 · 사과 및 합의" title="당신의 말로, 마음을 전해볼까요?">
+      <Heading
+        label="화해 시도 · 사과 및 합의"
+        title="당신의 말로, 마음을 전해볼까요?"
+      >
         완벽한 문장보다 진심이 담긴 한마디면 충분해요. 제가 곁에서 도울게요.
       </Heading>
       <Notice>신청인이 접수한 사건: {summary}</Notice>

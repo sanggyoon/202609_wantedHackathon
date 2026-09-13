@@ -9,7 +9,7 @@ export function ShareSelectScreen({
 }: {
   side: "A" | "B";
   data: Statement;
-  onComplete: () => void;
+  onComplete: (data: Statement) => void;
 }) {
   const doc = side === "A" ? "고소장" : "맞고소장";
   const first = data.incident.split(/[.!?。\n]/)[0];
@@ -20,14 +20,14 @@ export function ShareSelectScreen({
     {
       key: "expectation",
       label: "내가 기대했던 것",
-      value: "연락이 오거나 상황을 알려줄 거라고 기대했어요.",
+      value: data.expectation || "",
     },
     {
       key: "guess",
       label: "내 추측 (사실이 아닐 수도 있어요)",
-      value: "내 시간이 중요하지 않게 여겨진 것 같았어요.",
+      value: data.guess || "",
     },
-  ];
+  ].filter((item) => item.value);
   const [selected, setSelected] = useState<Record<string, boolean>>(
     Object.fromEntries(items.map((i) => [i.key, true])),
   );
@@ -62,10 +62,24 @@ export function ShareSelectScreen({
           ))}
         </ul>
         <Notice>
-          AI 미연결 상태예요. 지금은 예시로 정리한 항목이고, 선택은 체험용입니다.
+          {data.sourceMode
+            ? "대화에서 정리한 내용입니다. 선택하지 않은 내용은 다음 초안에 포함하지 않아요."
+            : "가상 사건의 항목입니다. 실제 링크 공유는 아직 연결되지 않았어요."}
         </Notice>
       </div>
-      <Button disabled={count === 0} onClick={onComplete}>
+      <Button
+        disabled={count === 0}
+        onClick={() =>
+          onComplete({
+            ...data,
+            incident: selected.incident ? data.incident : "공유하지 않은 내용",
+            feeling: selected.feeling ? data.feeling : "공유하지 않은 내용",
+            wish: selected.wish ? data.wish : "공유하지 않은 내용",
+            expectation: selected.expectation ? data.expectation : "",
+            guess: selected.guess ? data.guess : "",
+          })
+        }
+      >
         선택한 내용으로 {doc} 만들기 → ({count})
       </Button>
     </>

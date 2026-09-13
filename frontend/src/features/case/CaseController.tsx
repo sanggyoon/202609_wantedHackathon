@@ -85,7 +85,10 @@ export function CaseController({
         <ShareSelectScreen
           side="A"
           data={a}
-          onComplete={() => setScreen("고소장 검토")}
+          onComplete={(value) => {
+            setA(value);
+            setScreen("고소장 검토");
+          }}
         />
       );
       break;
@@ -94,7 +97,10 @@ export function CaseController({
         <ShareSelectScreen
           side="B"
           data={b}
-          onComplete={() => setScreen("맞고소장 검토")}
+          onComplete={(value) => {
+            setB(value);
+            setScreen("맞고소장 검토");
+          }}
         />
       );
       break;
@@ -136,7 +142,8 @@ export function CaseController({
               </Button>
             </div>
             <Notice>
-              상대의 답변을 기다리는 중 · 판결문은 7일간 보관돼요 (기준 시각 미정)
+              상대의 답변을 기다리는 중 · 판결문은 7일간 보관돼요 (기준 시각
+              미정)
             </Notice>
             <Button onClick={() => setScreen("소환장 도착")}>
               피고가 받는 화면 체험하기 →
@@ -148,8 +155,12 @@ export function CaseController({
     case "소환장 도착":
       content = (
         <>
-          <Heading label="당신에게 소환장이 도착했어요" title="조금 서운했대요.">
-            너무 걱정 말아요. 먼저 마음을 읽어보고, 당신의 이야기도 들려주면 돼요.
+          <Heading
+            label="당신에게 소환장이 도착했어요"
+            title="조금 서운했대요."
+          >
+            너무 걱정 말아요. 먼저 마음을 읽어보고, 당신의 이야기도 들려주면
+            돼요.
           </Heading>
           <StatementSummary data={a} />
           <div className="actions">
@@ -159,8 +170,8 @@ export function CaseController({
             </Button>
           </div>
           <Notice>
-            어떤 걸 선택해도 괜찮아요. 저는 누가 옳은지 가리려는 게 아니라, 두 분이
-            다시 이야기 나누길 바랄 뿐이에요.
+            어떤 걸 선택해도 괜찮아요. 저는 누가 옳은지 가리려는 게 아니라, 두
+            분이 다시 이야기 나누길 바랄 뿐이에요.
           </Notice>
         </>
       );
@@ -213,7 +224,10 @@ export function CaseController({
     case "화해 성립":
       content = (
         <>
-          <Heading label="심리 종결 · 화해 성립" title="미안한 마음이 도착했어요.">
+          <Heading
+            label="심리 종결 · 화해 성립"
+            title="미안한 마음이 도착했어요."
+          >
             여기까지 오느라 고생 많았어요. 두 분의 이야기를 천천히 읽어봐요.
           </Heading>
           <Notice>신청인(A)의 사건: {a.incident}</Notice>
@@ -244,11 +258,14 @@ export function CaseController({
           <section className="panel">
             <h2>사건 종결</h2>
             <h3>사과한 행동 또는 상황</h3>
-            <p>중재자(밤톨) 연결 후, 화해서에 직접 담긴 내용만 요약해드릴 자리예요.</p>
+            <p>
+              중재자(밤톨) 연결 후, 화해서에 직접 담긴 내용만 요약해드릴
+              자리예요.
+            </p>
             <h3>사과를 받은 당신에게 · 밤톨의 추천</h3>
             <p>
-              중재자(밤톨)가 연결되면, 사과를 받은 지금 어떤 말이나 행동을 건네면
-              두 사람이 더 편안해질지 살며시 추천해드릴게요.
+              중재자(밤톨)가 연결되면, 사과를 받은 지금 어떤 말이나 행동을
+              건네면 두 사람이 더 편안해질지 살며시 추천해드릴게요.
             </p>
           </section>
           <Notice>
@@ -310,20 +327,26 @@ export function CaseController({
             title="잠깐, 당신의 안전이 먼저예요."
           >
             혹시 위협이나 폭력과 관련된 일이라면, 이건 장난스러운 고소장으로
-            가볍게 다룰 수 없어요. 당신이 안전한 게 저에겐 무엇보다 중요하거든요.
+            가볍게 다룰 수 없어요. 당신이 안전한 게 저에겐 무엇보다
+            중요하거든요.
           </Heading>
           <Notice>
             위험 내용 감지 기능은 연결되지 않았습니다. 휴정 안내 화면의 구성
             예시입니다.
           </Notice>
-          <Button onClick={() => setScreen("사건 접수")}>접수 창구로 돌아가기</Button>
+          <Button onClick={() => setScreen("사건 접수")}>
+            접수 창구로 돌아가기
+          </Button>
         </>
       );
       break;
     case "심리 준비":
       content = (
         <>
-          <Heading label="화면 상태 예시" title="찬찬히 사건을 살펴보고 있어요." />
+          <Heading
+            label="화면 상태 예시"
+            title="찬찬히 사건을 살펴보고 있어요."
+          />
           <div
             className="panel skeleton"
             role="status"
@@ -374,7 +397,7 @@ export function CaseController({
             <option key={s}>{s}</option>
           ))}
         </select>
-        <small>가상 사건 · 저장되지 않음</small>
+        <small>A 진술은 대화 API · 나머지는 가상 사건</small>
       </aside>
       <div key={screen} className="screen">
         {content}
