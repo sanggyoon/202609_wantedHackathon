@@ -2,7 +2,26 @@
 import { useState } from "react";
 import { Button, Heading, Notice } from "@/components/ui";
 import type { Statement } from "@/features/report/types";
+import { LiveConversationScreen } from "./LiveConversationScreen";
 export function ConversationScreen({
+  side,
+  questions,
+  onComplete,
+}: {
+  side: "A" | "B";
+  questions: string[];
+  onComplete: (value: Statement) => void;
+}) {
+  if (side === "A") return <LiveConversationScreen onComplete={onComplete} />;
+  return (
+    <MockConversationScreen
+      side={side}
+      questions={questions}
+      onComplete={onComplete}
+    />
+  );
+}
+function MockConversationScreen({
   side,
   questions,
   onComplete,
@@ -64,7 +83,9 @@ export function ConversationScreen({
             setEdit(null);
           }}
         >
-          <label htmlFor="answer">{edit === null ? "내 진술" : "진술 수정"}</label>
+          <label htmlFor="answer">
+            {edit === null ? "내 진술" : "진술 수정"}
+          </label>
           <textarea
             id="answer"
             rows={3}
