@@ -28,10 +28,8 @@ class ComplaintEngineTest(unittest.TestCase):
         result = self.send("남친이 친구들이랑 술 마시러 갔는데 새벽 2시까지 연락을 안 했어.")
 
         self.assertFalse(result.ready_to_generate)
-        self.assertEqual(
-            result.missing_fields, ["hurt_point", "emotion", "emotion_reason", "desired_outcome"]
-        )
-        self.assertIn("마음", result.assistant_message)
+        self.assertEqual(result.missing_fields, ["emotion", "emotion_reason", "desired_outcome"])
+        self.assertIn("감정", result.assistant_message)
 
     def test_three_turn_flow_reaches_ready(self):
         first = self.send("남친이 친구들이랑 술 마시러 갔는데 새벽 2시까지 연락을 안 했어.")
@@ -107,7 +105,7 @@ class ComplaintEngineTest(unittest.TestCase):
         self.assertEqual(result.count("?"), 1)
         self.assertIn("무슨 일이 있었는지", result)
 
-    def test_lie_answer_confirms_hurt_point_and_moves_to_emotion(self):
+    def test_lie_answer_moves_to_emotion_without_requiring_hurt_point(self):
         result = self.send("남친이 거짓말함")
 
         self.assertNotIn("incident", result.missing_fields)

@@ -64,7 +64,6 @@ class ComplaintAssistantDraft(BaseModel):
 
 QUESTION_PRIORITY: list[ComplaintMissingField] = [
     "incident",
-    "hurt_point",
     "emotion",
     "emotion_reason",
     "desired_outcome",
@@ -599,8 +598,6 @@ def get_missing_fields(state: ComplaintConversationState) -> list[ComplaintMissi
     confirmed = set(state.confirmed_fields)
     if "incident" not in confirmed:
         missing.append("incident")
-    if "hurt_point" not in confirmed:
-        missing.append("hurt_point")
     if "emotion" not in confirmed:
         missing.append("emotion")
     if "emotion_reason" not in confirmed:
@@ -742,7 +739,7 @@ def build_fallback_assistant_message(
     quality = quality_signals or ConversationQualitySignals()
     if state.ready_to_generate:
         return "이제 제가 이해한 내용이 모였어요. 고소장 초안에서 마음이 잘 담겼는지 확인해봐요."
-    if quality.reply_mode == "clarify_assumption":
+    if quality.reply_mode == "clarify_assumption" and first(state.missing_fields) == "incident":
         return "그렇게 의심될 만큼 마음이 불안하셨군요. 직접 봤거나 들은 장면은 무엇이었나요?"
     questions = {
         "incident": "그 마음이 든 구체적인 장면을 하나 들려주실래요?",
