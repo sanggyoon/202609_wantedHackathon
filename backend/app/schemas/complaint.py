@@ -61,14 +61,34 @@ class ComplaintAIExtracted(BaseModel):
     optional: ComplaintOptionalInfo = Field(default_factory=ComplaintOptionalInfo)
 
 
-class SharedStatement(BaseModel):
-    """Finalized, share-selected card, never private conversation."""
+# 사용자가 공유하지 않기로 고른 항목에 들어가는 값. 빈 값과 구별해야 한다.
+NOT_SHARED = "공유하지 않은 내용"
 
-    incident: str = Field(min_length=1, max_length=8000)
-    feeling: str = Field(min_length=1, max_length=8000)
-    wish: str = Field(min_length=1, max_length=8000)
-    expectation: str = Field(default="", max_length=8000)
-    guess: str = Field(default="", max_length=8000)
+
+class SharedStatement(BaseModel):
+    """Finalized, share-selected card, never private conversation.
+
+    필드명은 DB `statement_cards` 컬럼과 1:1로 대응한다 (docs/API_Design.md §8-1).
+    alias를 두지 않아 요청·응답 모두 snake_case다.
+    """
+
+    # 아직 생성 주체가 없다. 대화 엔진이 추출하지 않으므로 항상 빈 값으로 들어온다.
+    # docs/API_Design.md §10-2 참고.
+    cute_charge: str = Field(default="", max_length=200)
+    incident_summary: str = Field(default="", max_length=8000)
+    different_viewpoint: str | None = Field(default=None, max_length=8000)
+
+    incident_description: str = Field(min_length=1, max_length=8000)
+    emotions: list[str] = Field(default_factory=list)
+    emotion_reason: str = Field(default="", max_length=8000)
+    hurt_point: str = Field(default="", max_length=8000)
+    desired_outcome: str = Field(min_length=1, max_length=8000)
+    expected_behavior: str = Field(default="", max_length=8000)
+    assumption: str = Field(default="", max_length=8000)
+
+    def shared(self, value: str) -> bool:
+        """공유하지 않기로 한 항목과 빈 값을 함께 걸러낸다."""
+        return bool(value.strip()) and value != NOT_SHARED
 
 
 class ComplaintConversationRequest(BaseModel):

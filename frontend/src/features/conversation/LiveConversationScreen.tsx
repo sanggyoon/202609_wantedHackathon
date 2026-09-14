@@ -140,18 +140,16 @@ export function LiveConversationScreen({
           }
           onClick={() =>
             onComplete({
-              incident:
+              // 대화 상태의 구조를 그대로 옮긴다. 예전에는 감정 셋을 한 덩어리
+              // 텍스트로 합치면서 emotions[]가 통째로 버려졌다.
+              incident_description:
                 state.incident.description || state.incident.facts.join(" "),
-              feeling: [
-                state.hurtPoint,
-                state.emotion.emotions.join(", "),
-                state.emotion.reason,
-              ]
-                .filter(Boolean)
-                .join("\n"),
-              wish: state.desiredOutcome || "",
-              expectation: state.expectedBehavior || "",
-              guess: state.incident.assumptions.join("\n"),
+              emotions: state.emotion.emotions,
+              emotion_reason: state.emotion.reason || "",
+              hurt_point: state.hurtPoint || "",
+              desired_outcome: state.desiredOutcome || "",
+              expected_behavior: state.expectedBehavior || "",
+              assumption: state.incident.assumptions.join("\n"),
               sourceMode: chat.latest?.mode,
             })
           }

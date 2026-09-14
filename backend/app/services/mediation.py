@@ -1,18 +1,29 @@
 import json
 
+from app.schemas.complaint import SharedStatement
 from app.schemas.mediation import MediationReport, MediationRequest, MediationResponse
 from app.services.bamtol_voice import BAMTOL_VOICE
 from app.services.openai_gateway import call_openai_json_chat, is_openai_configured
 
 
+def stated_feelings(card: SharedStatement) -> list[str]:
+    # Prefer the explicit emotion list; fall back to the reason only when no label exists.
+    # Withheld fields are not feelings and must not appear as one.
+    if card.emotions:
+        return list(card.emotions)
+    if card.shared(card.emotion_reason):
+        return [card.emotion_reason]
+    return []
+
+
 def ground_report(report: MediationReport, request: MediationRequest) -> MediationReport:
     # These fields must not reinterpret the speaker, emotion or incident.
     report.different_views = [
-        f"신청인(A)의 설명: {request.a.incident}",
-        f"상대방(B)의 설명: {request.b.incident}",
+        f"신청인(A)의 설명: {request.a.incident_description}",
+        f"상대방(B)의 설명: {request.b.incident_description}",
     ]
-    report.hurt_points_a = [] if request.a.feeling == "공유하지 않은 내용" else [request.a.feeling]
-    report.hurt_points_b = [] if request.b.feeling == "공유하지 않은 내용" else [request.b.feeling]
+    report.hurt_points_a = stated_feelings(request.a)
+    report.hurt_points_b = stated_feelings(request.b)
     # Free-form causal inference can silently reverse A/B even with role prompts.
     # Until source/actor grounding is available, do not publish this speculation.
     report.possible_misunderstanding = None
@@ -27,11 +38,11 @@ def generate_mediation(request: MediationRequest) -> MediationResponse:
             report=MediationReport(
                 common_ground=[],
                 different_views=[
-                    f"신청인(A)의 설명: {request.a.incident}",
-                    f"상대방(B)의 설명: {request.b.incident}",
+                    f"신청인(A)의 설명: {request.a.incident_description}",
+                    f"상대방(B)의 설명: {request.b.incident_description}",
                 ],
-                hurt_points_a=[request.a.feeling],
-                hurt_points_b=[request.b.feeling],
+                hurt_points_a=stated_feelings(request.a),
+                hurt_points_b=stated_feelings(request.b),
                 possible_misunderstanding=None,
                 conversation_starter="그날 서로 어떤 상황이었는지 차례로 이야기해볼까요?",
             ),

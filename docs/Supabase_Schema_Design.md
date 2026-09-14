@@ -303,25 +303,29 @@ DFD §7.3의 "접근 시점 검사 + 배치 삭제 병행" 권장안이다.
 | 1 | `20260910124408_init.sql` | `pgcrypto` 확장 | 적용됨 |
 | 2 | `20260912113000_case_schema.sql` | §4 열거형·테이블·인덱스, §5 RLS | 적용됨 |
 | 3 | `20260912113100_expiry_purge.sql` | §6 pg_cron·함수·스케줄 | 적용됨 |
-| 4 | `<타임스탬프>_align_api_schema.sql` | API 연결에 필요한 컬럼 4개 (아래) | **예정** |
+| 4 | `20260915101500_align_api_schema.sql` | API 연결에 필요한 컬럼 5개 (아래) | 작성됨, **적용 대기** |
 
 ### 4번 — API 연결에 필요한 컬럼 (2026-09-14 결정)
 
 ```sql
 alter table cases           add column writer_token_hash text;
+alter table statement_cards add column hurt_point        text;
 alter table statement_cards add column expected_behavior text;
 alter table statement_cards add column assumption        text;
-alter table apologies       add column admitted_point     text;
+alter table apologies       add column admitted_point    text;
 ```
 
 `writer_token_hash`는 A의 쓰기 권한 검증에 쓴다(`docs/API_Design.md` §6.1).
 
-나머지 셋은 **프론트에 이미 구현된 기능이 DB에 담길 곳이 없어서** 추가한다. 공유 항목
+나머지 넷은 **프론트에 이미 구현된 기능이 DB에 담길 곳이 없어서** 추가한다. 공유 항목
 선택 화면(`ShareSelectScreen.tsx`)이 사용자에게 "기대했던 행동"·"추측"을 공유할지 고르게
 하고, 사과문 화면은 "인정한 점"을 받는다. 카드 형태를 DB 기준으로 통일하기로 하면서
 (`docs/API_Design.md` §8-1) 이 셋을 DB가 흡수한다.
 
-넷 다 nullable이고 기존 행이 없어 백필이 불필요하다.
+다섯 다 nullable이고 기존 행이 없어 백필이 불필요하다.
+
+`hurt_point`는 착수 후 드러났다. 프론트가 감정 칸 하나에 `hurtPoint`·`emotions`·
+`emotion_reason` 셋을 합쳐 넣고 있어, 컬럼이 없으면 그대로 버려진다.
 
 **PRD §11 데이터 구조 초안에는 없던 필드다.** 초안 이후 프론트에서 늘어난 기능이므로
 PRD도 함께 갱신하는 것이 맞다.

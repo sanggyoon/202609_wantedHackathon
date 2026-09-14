@@ -197,10 +197,19 @@ POST /api/mediation/report
 
 ```jsonc
 {
-  "a": { "incident": "...", "feeling": "...", "wish": "...",
-         "expectation": "", "guess": "" },
-  "b": { "incident": "...", "feeling": "...", "wish": "...",
-         "expectation": "", "guess": "" }
+  "a": {
+    "incident_description": "연락 없이 한 시간 늦었어",   // 필수
+    "emotions": ["걱정", "서운함"],
+    "emotion_reason": "내 시간이 중요하지 않은 것 같아서",
+    "hurt_point": "기다린 한 시간",
+    "desired_outcome": "먼저 알려줬으면 좋겠어",          // 필수
+    "expected_behavior": "짧게라도 연락",
+    "assumption": "일부러 무시한 것 같다",
+    "cute_charge": "",            // 생성 주체 없음 — §10-2
+    "incident_summary": "",       // 생성 주체 없음 — §10-2
+    "different_viewpoint": null   // 생성 주체 없음 — §10-2
+  },
+  "b": { /* 동일 */ }
 }
 ```
 
@@ -208,8 +217,14 @@ POST /api/mediation/report
 *"Finalized, share-selected card, never private conversation."* 대화 원문이 이 경로로
 들어오지 않는다.
 
-`incident`·`feeling`·`wish`는 필수(최소 1자), `expectation`·`guess`는 기본 `""`.
-모두 최대 8,000자.
+**필드명은 DB `statement_cards` 컬럼과 1:1로 대응한다**(§8-1). alias를 두지 않으므로
+요청·응답 모두 snake_case다.
+
+`incident_description`·`desired_outcome`만 필수(최소 1자)이고 나머지는 기본값이 있다.
+문자열은 최대 8,000자.
+
+공유하지 않기로 고른 항목에는 `"공유하지 않은 내용"` 이 들어간다. 빈 값과 구별해야 하며,
+`SharedStatement.shared()`가 둘을 함께 걸러낸다.
 
 ### 5.2 응답
 
@@ -235,8 +250,8 @@ POST /api/mediation/report
 
 | 필드 | 처리 | 이유 |
 | --- | --- | --- |
-| `different_views` | A·B의 `incident`를 화자 표기와 함께 그대로 채움 | LLM이 화자를 뒤바꾸는 것을 원천 차단 |
-| `hurt_points_a` / `_b` | 각 측 `feeling`을 그대로 사용 | 감정을 재해석하지 않음 |
+| `different_views` | A·B의 `incident_description`을 화자 표기와 함께 그대로 채움 | LLM이 화자를 뒤바꾸는 것을 원천 차단 |
+| `hurt_points_a` / `_b` | 각 측 `emotions[]`를 그대로 사용. 비어 있으면 `emotion_reason`으로 대체하고, 미공유면 `[]` | 감정을 재해석하지 않음 |
 | `possible_misunderstanding` | **항상 `null`** | 인과 추론이 A/B를 조용히 뒤집는 사례가 있어 발행을 보류 |
 
 코드 주석: *"Free-form causal inference can silently reverse A/B even with role prompts.
@@ -356,7 +371,7 @@ DFD §7.3의 **접근 시점 검사(lazy)** 이며, `pg_cron` 배치가 최대 1
 문서를 구현에 맞추는 과정에서 드러난 항목이다. 코드 수정이 필요한 것과 문서만 고치면 되는
 것을 구분한다.
 
-### 8-1. 카드 형태 통일 — **DB 기준으로 결정됨 (2026-09-14)**
+### 8-1. 카드 형태 통일 — **DB 기준으로 통일 완료 (2026-09-15)**
 
 API·프론트·DB가 같은 카드를 서로 다른 필드로 표현하고 있었다. **DB 스키마를 기준으로
 통일한다.** `statement_cards` 컬럼명이 API 응답과 프론트 타입의 이름이 된다.
@@ -366,17 +381,18 @@ DB를 기준으로 삼는 이유는 두 가지다. PRD §11 데이터 구조 초
 
 #### 기준 형태
 
-| 필드 | 타입 | 출처 |
-| --- | --- | --- |
-| `cute_charge` | string | **신규** — AI가 생성해야 함 |
-| `incident_summary` | string | **신규** — AI가 생성해야 함 |
-| `incident_description` | string | 현 `incident` |
-| `emotions` | string[] | 대화 상태의 `emotion.emotions` — **현재 카드에서 유실되고 있음** |
-| `emotion_reason` | string | 현 `feeling` |
-| `different_viewpoint` | string \| null | **신규** — AI가 생성해야 함 |
-| `desired_outcome` | string | 현 `wish` |
-| `expected_behavior` | string \| null | 현 `expectation` — **DB에 컬럼 추가 필요** |
-| `assumption` | string \| null | 현 `guess` — **DB에 컬럼 추가 필요** |
+| 필드 | 타입 | 이전 이름 | 비고 |
+| --- | --- | --- | --- |
+| `incident_description` | string (필수) | `incident` | |
+| `emotions` | string[] | — | **유실되던 것을 복구** |
+| `emotion_reason` | string | `feeling`의 일부 | |
+| `hurt_point` | string | `feeling`의 일부 | DB 컬럼 추가함 |
+| `desired_outcome` | string (필수) | `wish` | |
+| `expected_behavior` | string | `expectation` | DB 컬럼 추가함 |
+| `assumption` | string | `guess` | DB 컬럼 추가함 |
+| `cute_charge` | string | — | 항상 `""` — 생성 주체 없음 (§10-2) |
+| `incident_summary` | string | — | 항상 `""` — 생성 주체 없음 (§10-2) |
+| `different_viewpoint` | string \| null | — | 항상 `null` — 생성 주체 없음 (§10-2) |
 
 #### "DB 기준"이 컬럼 추가를 포함하는 이유
 
@@ -407,15 +423,22 @@ DB와 정확히 같은 모양이다. 이를 카드로 옮기는 `SharedStatement
 
 #### 필요한 마이그레이션
 
+`supabase/migrations/20260915101500_align_api_schema.sql`에서 §11의 `writer_token_hash`와
+한 파일로 묶어 처리했다.
+
 ```sql
--- supabase/migrations/<타임스탬프>_align_card_fields.sql
+alter table cases           add column writer_token_hash text;
+alter table statement_cards add column hurt_point        text;
 alter table statement_cards add column expected_behavior text;
-alter table statement_cards add column assumption text;
-alter table apologies      add column admitted_point text;
+alter table statement_cards add column assumption        text;
+alter table apologies       add column admitted_point    text;
 ```
 
-세 컬럼 모두 nullable이고 기존 행이 없어 백필이 필요 없다. §11의 `writer_token_hash`와
-한 파일로 묶어도 된다.
+다섯 컬럼 모두 nullable이고 기존 행이 없어 백필이 필요 없다.
+
+`hurt_point`는 착수 후 드러난 항목이다. 프론트가 `feeling` 한 칸에 `hurtPoint`·`emotions`·
+`emotion_reason` 셋을 합쳐 넣고 있었는데, DB에 `hurt_point`가 없어 그대로 두면 데이터가
+버려진다. `expectation`·`guess`와 같은 성격이라 함께 흡수했다.
 
 #### 아직 만들지 못하는 세 필드
 
@@ -426,9 +449,12 @@ alter table apologies      add column admitted_point text;
 
 ### 8-2. 네이밍 규칙이 엔드포인트마다 다르다 — **코드 수정 권장**
 
-`complaint` 계열은 camelCase alias를 쓰고(`conversationId`, `assistantMessage`),
-`mediation` 계열은 snake_case를 쓴다(`common_ground`, `hurt_points_a`). 같은 API 안에서
-두 규칙이 섞여 프론트가 엔드포인트마다 다르게 매핑해야 한다.
+`complaint` 계열의 대화 상태는 camelCase alias를 쓰고(`conversationId`, `assistantMessage`),
+`mediation` 계열과 카드는 snake_case를 쓴다(`common_ground`, `incident_description`).
+
+**카드는 §8-1에서 snake_case로 확정됐다** — DB 컬럼명이 곧 필드명이다. 남은 불일치는
+대화 상태(`ComplaintConversationState`) 쪽이며, 이는 DB에 저장되지 않는 임시 구조라
+시급도가 낮다.
 
 값 리터럴도 섞여 있다 — `missingFields`(camelCase 필드)의 값은 `hurt_point`(snake_case)다.
 
@@ -486,7 +512,7 @@ DFD §9의 검수 항목 중 **구현이 책임지는 것**들이다. 상당수�
 | 1 | 접근 로그의 `public_token` 마스킹 (Nginx `log_format`) | §6 구현 후 배포 전 |
 | 2 | `cute_charge`·`incident_summary`·`different_viewpoint`를 누가 생성할지 (§8-1) | 카드 저장 구현 전 |
 | 3 | 오류 응답 형식 통일 (§8-3) | §6 착수 전 |
-| 4 | 네이밍 규칙 통일 (§8-2) | 가능하면 프론트 연결 전 |
+| 4 | 대화 상태의 네이밍 규칙 (§8-2) — 카드는 해소됨 | 낮음 (DB 미저장 구조) |
 | 5 | 동기 응답이 Nginx·브라우저 타임아웃 안에 드는지 실측 | 맞고소 경로 연결 시 |
 | 6 | 위험 내용 감지 기준과 응답 (PRD §14) | 안전 검증 단계 |
 | 7 | 사건당 대화 턴 수 상한 (LLM 비용 방어) | 비용 추이를 보고 |
@@ -519,31 +545,22 @@ PRD §18에 맞춘다. 2·4단계는 이미 끝났고, 남은 것은 사건 계�
 | --- | --- | --- |
 | 2 | A의 고소장 생성 대화 | **구현됨** (§4) |
 | 4 | 맞고소 중재 리포트 | **구현됨** (§5) |
-| 0 | **카드 형태 통일** — 마이그레이션, `SharedStatement` 재정의, 프론트 타입·화면 수정 | 미착수 (§8-1) |
+| 0 | **카드 형태 통일** — 마이그레이션, `SharedStatement` 재정의, 프론트 타입·화면 수정 | **완료** (§8-1) |
 | 1 | 사건·단일 링크 기반 — `POST /api/cases`, `GET /api/cases/{token}`, 만료 lazy 검사 | 미구현 |
 | 3 | B의 응답 분기 — `response-type` | 미구현 |
 | 5 | 사과 종결 — `apology` | 미구현 |
 | 6 | 안전·품질 검증 | 부분 (§9) |
 
-**0단계를 1단계보다 먼저 한다.** 프론트가 이미 두 엔드포인트에 연결돼 있으므로
-(`lib/api/`), 카드 형태를 나중에 바꾸면 저장 계층·API·프론트를 동시에 고쳐야 한다.
-지금은 프론트와 API 두 곳만 손대면 된다.
+0단계를 1단계보다 먼저 한 이유는, 프론트가 이미 두 엔드포인트에 연결돼 있어
+(`lib/api/`) 나중에 바꾸면 저장 계층·API·프론트를 동시에 고쳐야 하기 때문이다.
 
 1단계에서 만료 lazy 검사(§7.3)를 함께 넣는다. 나중에 붙이면 모든 조회 경로를 다시 훑어야
 한다.
 
-### 선행 마이그레이션
+### 선행 마이그레이션 — 작성됨
 
-A-3(쓰기 토큰)과 §8-1(카드 형태 통일)에 필요한 컬럼을 한 파일로 묶는다.
+A-3(쓰기 토큰)과 §8-1(카드 형태 통일)에 필요한 컬럼 다섯 개를
+`supabase/migrations/20260915101500_align_api_schema.sql`에 묶었다. 내용은 §8-1 참고.
 
-```sql
--- supabase/migrations/<타임스탬프>_align_api_schema.sql
-alter table cases           add column writer_token_hash text;
-alter table statement_cards add column expected_behavior text;
-alter table statement_cards add column assumption       text;
-alter table apologies       add column admitted_point    text;
-```
-
-네 컬럼 모두 nullable이고 기존 행이 없어 백필이 불필요하다. 적용은
-`Supabase_Schema_Design.md` §8 절차를 따른다 — **머지만으로는 반영되지 않으며
-`supabase db push`가 필요하다**(`Tech_ADR.md` §10).
+**적용은 별도 작업이다.** 머지만으로는 반영되지 않으며 `supabase db push`가 필요하다
+(`Tech_ADR.md` §10, `Supabase_Schema_Design.md` §8).

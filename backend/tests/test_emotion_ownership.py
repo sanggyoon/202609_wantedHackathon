@@ -88,12 +88,14 @@ class EmotionOwnershipTest(unittest.TestCase):
     def test_mediation_preserves_subjects_and_exact_emotions(self):
         request = MediationRequest(
             a=dict(
-                incident="여자친구가 나 빼고 치킨시켜먹음", feeling="기분 나쁨", wish="나도 시켜줘"
+                incident_description="여자친구가 나 빼고 치킨시켜먹음",
+                emotions=["기분 나쁨"],
+                desired_outcome="나도 시켜줘",
             ),
             b=dict(
-                incident="남자친구가 자서 여자가 따로 치킨을 먹었다",
-                feeling=NO_EMOTION,
-                wish="화 좀 풀었으면 좋겠어",
+                incident_description="남자친구가 자서 여자가 따로 치킨을 먹었다",
+                emotions=[NO_EMOTION],
+                desired_outcome="화 좀 풀었으면 좋겠어",
             ),
         )
         report = MediationReport(
@@ -110,5 +112,5 @@ class EmotionOwnershipTest(unittest.TestCase):
         self.assertIsNone(result.possible_misunderstanding)
         self.assertEqual(result.hurt_points_b, [NO_EMOTION])
         self.assertEqual(result.hurt_points_a, ["기분 나쁨"])
-        self.assertIn(request.b.incident, result.different_views[1])
+        self.assertIn(request.b.incident_description, result.different_views[1])
         self.assertNotIn("몰래", " ".join(result.different_views))

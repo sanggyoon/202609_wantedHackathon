@@ -11,7 +11,12 @@ from app.services.complaint_engine import (
     handle_complaint_message,
 )
 
-CARD = {"incident": "연락 없이 늦었다", "feeling": "서운함", "wish": "먼저 연락해주기"}
+CARD = {
+    "incident_description": "연락 없이 늦었다",
+    "emotions": ["서운함"],
+    "emotion_reason": "기다린 시간이 길어서",
+    "desired_outcome": "먼저 연락해주기",
+}
 
 
 class RespondentTest(unittest.TestCase):
@@ -49,7 +54,7 @@ class RespondentTest(unittest.TestCase):
             )
         self.assertIn("respondent B", extract.call_args.args[2])
         self.assertIn("NOT established truth", speak.call_args.args[3])
-        self.assertIn(CARD["incident"], extract.call_args.args[2])
+        self.assertIn(CARD["incident_description"], extract.call_args.args[2])
 
     def test_b_can_complete_without_agreeing_or_apologizing(self):
         with patch("app.services.complaint_engine.is_openai_configured", return_value=False):

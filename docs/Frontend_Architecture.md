@@ -214,15 +214,20 @@ frontend/src/
 
 ## 13. 후속 결정 사항
 
-> **2026-09-14 결정 — 카드 필드가 DB 기준으로 바뀐다.** `features/report/types.ts`의
+> **2026-09-15 완료 — 카드 필드를 DB 기준으로 바꿨다.** `features/report/types.ts`의
 > `Statement`·`Apology`가 DB `statement_cards`·`apologies` 컬럼명을 따르도록 개편된다.
 > `incident`→`incident_description`, `feeling`→`emotions[]`+`emotion_reason`,
 > `wish`→`desired_outcome`, `expectation`→`expected_behavior`, `guess`→`assumption`,
-> `admitted`→`admitted_point`. 여기에 `cute_charge`(귀여운 죄명)·`incident_summary`·
-> `different_viewpoint` 세 필드가 새로 들어온다. 자세한 매핑은 `docs/API_Design.md` §8-1.
+> `admitted`→`admitted_point`. 여기에 `cute_charge`·`incident_summary`·
+> `different_viewpoint` 세 필드가 들어왔으나 **생성 주체가 없어 항상 빈 값**이다.
+> 자세한 매핑은 `docs/API_Design.md` §8-1.
 >
-> `feeling`이 `emotions[]`와 `emotion_reason` 둘로 갈리는 점에 유의. 현재는 감정 목록이
-> 카드 단계에서 버려지고 있다.
+> `feeling`은 `emotions[]`·`emotion_reason`·`hurt_point` 셋으로 갈렸다. 예전에는 이
+> 셋을 한 덩어리 텍스트로 합치면서 감정 목록이 카드 단계에서 버려지고 있었다.
+> 화면 표시용으로 합칠 때는 `types.ts`의 `feelingText()`를 쓴다 — 저장 형태가 아니다.
+>
+> 공유 항목 선택 화면의 토글 단위와 DB 필드 단위는 1:1이 아니다. "그때 느낀 감정"
+> 토글 하나가 위 세 필드를 함께 덮는다.
 
 다음 항목은 레이아웃 설계를 막지 않지만 실제 API 연결 및 서비스 완료 전에 확정해야 한다.
 
