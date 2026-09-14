@@ -6,6 +6,7 @@ export type Statement = {
   guess?: string;
   sourceMode?: "openai" | "local";
 };
+export type EntryMode = "new" | "invited" | "result";
 export type Apology = {
   understood: string;
   admitted: string;

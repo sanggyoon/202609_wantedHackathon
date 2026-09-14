@@ -96,7 +96,7 @@ export function LiveConversationScreen({
       )}
       {(!state?.readyToGenerate || chat.editing !== null) && (
         <form
-          className="composer"
+          className="composer live-composer"
           onSubmit={(e) => {
             e.preventDefault();
             void chat.send();
