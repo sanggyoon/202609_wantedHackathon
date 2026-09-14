@@ -1,8 +1,8 @@
 # PRD 화면 반영 점검표
 
-> 2026-09-12: A 진술은 대화 API에 연결됨. 로컬 규칙/OpenAI 모드는 화면에 표시한다.
-> B 응답과 공유·결과 저장은 가상 흐름을 유지한다. 자세한 내용은
-> [A 대화 엔진 연결](./A_Conversation_Integration.md) 참고.
+> 2026-09-14: A/B 진술과 양측 중재 요약은 실제 API에 연결됨. 로컬/OpenAI 모드를 표시한다.
+> 사과는 직접 작성한 내용 그대로 화면에 표시한다. 실제 링크·결과 저장·만료는 미연결이다.
+> [A 대화 엔진 연결](./A_Conversation_Integration.md), [B 흐름 연결](./B_Respondent_Integration.md) 참고.
 
 > 2026-09-10 · API 없는 화면 초안 · 검토 경로 `/wireframe`
 
