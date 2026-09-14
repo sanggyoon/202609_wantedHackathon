@@ -324,6 +324,8 @@ supabase db diff --linked     # "No schema changes found"면 drift 없음
 
 - 인증(로그인) 방식 — 세션 vs JWT, 소셜 로그인 여부 ❓
 - 마이그레이션 적용 자동화 — `deploy.yml`에 `supabase db push` 스텝을 넣을지 ❓ (§10 참고)
-- LLM 제공자 — ❓ (OpenAI/Anthropic/기타), 비용·레이트리밋 고려
+- ~~LLM 제공자~~ → **OpenAI `gpt-4.1-mini`** 로 구현됨 (`backend/app/core/config.py`, 2026-09-14).
+  `store=False`로 호출해 제공자 무보관을 적용. 비용·레이트리밋 관측은 아직 없음 — 사건당
+  대화 턴 수 상한이 미정이다 (`docs/API_Design.md` §10-7)
 
 ~~DB 마이그레이션 도구~~ → §10에서 결정 (2026-09-10), 적용 방식은 Supabase CLI로 번복 (2026-09-12)

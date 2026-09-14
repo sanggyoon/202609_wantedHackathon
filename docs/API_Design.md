@@ -1,461 +1,480 @@
 # API 설계
 
-> 프로젝트: 문철빵 · 작성일: 2026-09-14 · 상태: Draft
+> 프로젝트: 문철빵 · 최초 작성: 2026-09-14 · 최종 수정: 2026-09-14 · 상태: 구현 반영
 >
-> 근거 문서: `docs/PRD.md` §8(입력 데이터)·§10(기능 요구사항)·§14(오류 처리),
-> `docs/Data_Flow.md` v0.2 (이하 **DFD**), `docs/Supabase_Schema_Design.md`,
-> `docs/Frontend_Architecture.md` §9(API 연결 경계)
+> 근거 문서: `docs/PRD.md` §8·§10·§14, `docs/Data_Flow.md` v0.2 (이하 **DFD**),
+> `docs/Supabase_Schema_Design.md`, `docs/Frontend_Architecture.md` §9
+>
+> **이 문서는 `backend/app/` 실제 구현을 기준으로 한다.** 아직 코드가 없는 부분은
+> §6에 "미구현"으로 분리해 설계만 남겼다.
 
 ---
 
 ## 1. 목적과 범위
 
-프론트엔드(Next.js)와 백엔드(FastAPI) 사이의 HTTP 계약을 확정한다.
-`Frontend_Architecture.md` §9가 "필요한 계약"으로 나열한 7개 항목에 실제 경로·요청·응답·
-오류 코드를 부여하는 것이 이 문서의 일이다.
+프론트엔드(Next.js)와 백엔드(FastAPI) 사이의 HTTP 계약을 기록한다.
 
-**범위에 포함:** 엔드포인트, 요청·응답 스키마, 인증·권한 모델, 오류 규약,
-원문 비저장을 코드에서 보장하는 지점.
+**범위에 포함:** 엔드포인트, 요청·응답 스키마, 오류 규약, 원문 비저장을 코드가 보장하는 지점,
+설계와 구현 사이의 불일치.
 
-**범위에서 제외:** LLM 프롬프트 내용, FastAPI 내부 모듈 구조, 프론트 상태 관리,
-배포 설정. DB 스키마는 `Supabase_Schema_Design.md`가 기준이며 이 문서는 그 위에 선다.
+**범위에서 제외:** LLM 프롬프트 내용, 프론트 상태 관리, 배포 설정.
+
+절마다 다음 표기를 단다.
+
+| 표기 | 뜻 |
+| --- | --- |
+| **구현됨** | `backend/app/`에 코드가 있고 이 문서가 그것을 기술함 |
+| **미구현** | 설계만 존재. 코드 없음 |
 
 ---
 
-## 2. 설계 결정
+## 2. 현재 구현 상태
 
-| # | 결정 | 근거 |
+```
+backend/app/
+  main.py                      FastAPI 앱, CORS, 422 핸들러
+  api/health.py                GET  /api/health
+  api/conversation.py          POST /api/complaint/conversation/message
+  api/mediation.py             POST /api/mediation/report
+  schemas/complaint.py         대화 상태·요청·응답 모델
+  schemas/mediation.py         리포트 모델
+  services/complaint_engine.py 대화 처리 (1,125줄)
+  services/mediation.py        리포트 생성
+  services/openai_gateway.py   OpenAI 호출
+  services/bamtol_voice.py     페르소나 문구
+  services/emotion_evidence.py 감정 근거 추출
+```
+
+| 기능 (`Frontend_Architecture.md` §9) | 상태 |
+| --- | --- |
+| AI 대화 | **구현됨** — §4 |
+| 맞고소 리포트 생성 | **구현됨** — §5 |
+| 사건 작성 시작 / 조회 | **미구현** — §6 |
+| 고소장 확정 (영속 저장) | **미구현** — §6 |
+| 응답 방식 선택 | **미구현** — §6 |
+| 사과 제출 | **미구현** — §6 |
+
+**백엔드에 DB 접근 코드가 전혀 없다.** `config.py`에 `database_url`·`supabase_*` 값이
+선언돼 있으나 어떤 모듈도 사용하지 않는다. 즉 §7에서 적용한 Supabase 스키마는 아직
+백엔드와 연결되지 않았고, 현재 API는 **사건을 식별하지도 저장하지도 않는다.**
+
+---
+
+## 3. 설계 결정
+
+| # | 결정 | 상태 | 비고 |
+| --- | --- | --- | --- |
+| A-1 | AI 대화는 **무상태** — 서버가 대화를 보관하지 않음 | **구현됨** | 구현은 설계보다 강한 방식을 택함. 아래 참고 |
+| A-2 | 리포트 생성은 **동기** | **구현됨** | 라우트를 `def`(동기)로 선언해 스레드풀에서 블로킹 호출 |
+| A-3 | A의 쓰기 권한은 별도 `writer_token` | **미구현** | §6 |
+| A-4 | AI 응답은 **비스트리밍**(일반 JSON) | **구현됨** | |
+| A-5 | 전이 가능 여부를 서버가 `available_actions`로 전달 | **미구현** | §6 |
+
+### A-1 — 구현이 설계보다 강하다
+
+설계 단계에서는 "클라이언트가 대화 원문 전체를 매 요청에 재전송"을 택했다. 실제 구현은
+다르다. 클라이언트가 보내는 것은 **최신 메시지 한 개(`message`)와 누적된 구조화 상태
+(`state`)** 뿐이고, 서버는 갱신된 `state`를 돌려준다.
+
+차이가 중요하다. 재전송 방식은 원문이 매 요청마다 네트워크를 오가지만, 상태 방식은
+**원문이 서버에 도달하는 것이 한 번뿐**이고 이후로는 추출된 구조만 오간다. DFD §2-2
+"원문은 흐르되 고이지 않는다"를 더 좁은 통로로 만족시킨다.
+
+문서를 구현에 맞춘다. A-1의 표현은 "무상태"이되 그 수단은 상태 객체 왕복이다.
+
+---
+
+## 4. AI 대화 — **구현됨**
+
+```
+POST /api/complaint/conversation/message
+```
+
+`backend/app/api/conversation.py`. FR-02(한 번에 하나의 질문)·FR-03(필수 정보 파악)의 구현.
+
+### 4.1 요청
+
+```jsonc
+{
+  "conversationId": "temp",          // 선택, 기본 "temp"
+  "message": "어제 답장을 안 했어",    // 필수, 공백만이면 400
+  "side": "A",                        // A | B, 기본 "A"
+  "state": { /* 직전 응답의 state를 그대로 */ },   // 선택. 첫 턴엔 생략
+  "sharedStatement": { /* 아래 §5.1 */ }           // 선택
+}
+```
+
+**필드명은 camelCase다.** Pydantic 모델은 `populate_by_name=True`라 snake_case
+(`conversation_id`)도 받지만, 응답은 항상 alias(camelCase)로 직렬화된다.
+
+### 4.2 `state` — 대화의 누적 상태
+
+클라이언트가 보관하고 매 턴 왕복시키는 객체다.
+
+```jsonc
+{
+  "incident": {
+    "description": "답장을 세 시간 동안 안 했다",
+    "facts": ["오후 3시에 메시지를 보냈다"],      // 사용자가 직접 경험한 사실
+    "assumptions": ["일부러 무시한 것 같다"]       // 사용자의 추측
+  },
+  "hurtPoint": "기다린 시간",
+  "emotion": { "emotions": ["서운함", "불안"], "reason": "..." },
+  "expectedBehavior": "바로는 아니어도 한마디는 해줄 줄 알았다",
+  "desiredOutcome": "바쁠 때 미리 말해주기",
+  "optional": {
+    "nicknameA": null, "nicknameB": null,
+    "date": null, "place": null,
+    "quotes": [], "punishmentIdea": null
+  },
+  "confirmedFields": ["incident"],
+  "missingFields": ["emotion_reason", "desired_outcome"],
+  "readyToGenerate": false
+}
+```
+
+`incident`가 **사실(`facts`)과 추측(`assumptions`)을 분리**하는 것은 PRD §8 "사용자가 직접
+경험한 사실과 사용자의 추측"을 구조로 옮긴 것이다. PRD §13의 "말하지 않은 상대방의 의도를
+사실처럼 단정하지 않는다"가 데이터 모델 차원에서 지켜진다.
+
+`optional` 전체는 PRD §8 "선택 데이터"에 대응한다. 비어 있으면 중립 호칭과 기본 톤을 쓴다.
+
+`missingFields`·`confirmedFields`의 값은 다음 여섯 개다. **이 리터럴만은 snake_case다**
+(필드명은 camelCase, 값은 snake_case).
+
+```
+incident | hurt_point | emotion | emotion_reason | expected_behavior | desired_outcome
+```
+
+### 4.3 응답
+
+```jsonc
+// 200
+{
+  "conversationId": "temp",
+  "state": { /* 갱신된 상태. 다음 요청에 그대로 실어 보낼 것 */ },
+  "extracted": { /* 이번 턴에 새로 뽑아낸 것만 */ },
+  "assistantMessage": "그때 어떤 기분이었어?",
+  "missingFields": ["emotion_reason"],
+  "readyToGenerate": false,
+  "mode": "openai"                   // openai | local
+}
+```
+
+`assistantMessage`는 질문을 **하나만** 담는다. `complaint_engine.enforce_single_question()`이
+이를 강제한다 — FR-02의 구현이 프롬프트 지시에 그치지 않고 후처리로 보장된다.
+
+`readyToGenerate: true`가 되면 카드를 만들 수 있다. 그 뒤에도 대화는 계속할 수 있다.
+
+### 4.4 `mode` — 모델 없이도 동작한다
+
+| 값 | 조건 | 동작 |
 | --- | --- | --- |
-| A-1 | AI 대화는 **완전 무상태** — 클라이언트가 매 요청에 대화 전체를 재전송 | 서버가 원문을 보관할 곳 자체를 없애 DFD §2-2를 구조적으로 충족. 컨테이너를 여러 개 띄워도 세션이 깨지지 않음 |
-| A-2 | 리포트 생성은 **동기** — 완성될 때까지 기다렸다 한 번에 응답 | 상태가 하나뿐이라 버그 여지가 적음. `GENERATING` 상태와 폴링·복구 로직을 3주 일정에 얹지 않음 |
-| A-3 | A의 쓰기 권한은 **별도 `writer_token`** 으로 보장 | 링크만으로는 제3자가 A의 초안을 확정시킬 수 있음 |
-| A-4 | AI 응답은 **비스트리밍**(일반 JSON) | AI가 한 번에 질문 하나씩만 던지므로(PRD §8) 응답이 짧아 SSE 복잡도를 정당화하지 못함 |
-| A-5 | 상태 전이 가능 여부는 **서버가 계산해 `available_actions`로 전달** | 전이 규칙이 프론트·백에 이중으로 흩어지는 것을 막음 |
+| `openai` | `OPENAI_API_KEY`가 있고 `CONVERSATION_USE_LOCAL`이 꺼짐 | LLM으로 추출·질문 생성 |
+| `local` | 그 외 | 키워드 규칙 기반 추출(`extract_with_fallback`)과 정적 질문 |
 
-### 이 문서가 해소하는 미결 항목
-
-`Frontend_Architecture.md` §13이 "API 연결 전 확정"으로 남긴 것 중 다음이 여기서 정해진다.
-
-- 최초 작성자·응답 작성자의 권한 부여 → §3 (A-3)
-- 답변 수정 가능 여부, 중복·동시 제출 정책 → §6 (409 규약)
-- 리포트 생성 중 상태와 생성 실패 시 복구 → §2 (A-2, 생성 중 상태를 두지 않음)
-- 스트림 형식 → §2 (A-4)
+`local`은 키가 없는 개발 환경에서도 프론트를 붙여볼 수 있게 한다. `mode`를 응답에 담으므로
+프론트는 지금 어느 경로로 동작 중인지 알 수 있다.
 
 ---
 
-## 3. 인증·권한 모델
+## 5. 중재 리포트 — **구현됨**
 
-로그인이 없으므로 권한 판단의 입력은 토큰뿐이다(DFD §2-4). 토큰 두 종류를 쓴다.
+```
+POST /api/mediation/report
+```
+
+`backend/app/api/mediation.py`. FR-09의 구현.
+
+### 5.1 요청
+
+```jsonc
+{
+  "a": { "incident": "...", "feeling": "...", "wish": "...",
+         "expectation": "", "guess": "" },
+  "b": { "incident": "...", "feeling": "...", "wish": "...",
+         "expectation": "", "guess": "" }
+}
+```
+
+`SharedStatement`는 **공유 선택이 끝난 확정 카드**다. 코드 주석이 명시한다 —
+*"Finalized, share-selected card, never private conversation."* 대화 원문이 이 경로로
+들어오지 않는다.
+
+`incident`·`feeling`·`wish`는 필수(최소 1자), `expectation`·`guess`는 기본 `""`.
+모두 최대 8,000자.
+
+### 5.2 응답
+
+```jsonc
+{
+  "report": {
+    "common_ground": ["..."],
+    "different_views": ["신청인(A)의 설명: ...", "상대방(B)의 설명: ..."],
+    "hurt_points_a": ["..."],
+    "hurt_points_b": ["..."],
+    "possible_misunderstanding": null,
+    "conversation_starter": "그날 서로 어떤 상황이었는지 차례로 이야기해볼까요?"
+  },
+  "mode": "openai"
+}
+```
+
+**리포트만 snake_case다.** `complaint` 계열과 달리 alias를 두지 않았다. §8-2 참고.
+
+### 5.3 AI 출력을 코드가 되돌려 놓는다
+
+`mediation.ground_report()`가 LLM 응답을 받은 뒤 세 필드를 **강제로 덮어쓴다.**
+
+| 필드 | 처리 | 이유 |
+| --- | --- | --- |
+| `different_views` | A·B의 `incident`를 화자 표기와 함께 그대로 채움 | LLM이 화자를 뒤바꾸는 것을 원천 차단 |
+| `hurt_points_a` / `_b` | 각 측 `feeling`을 그대로 사용 | 감정을 재해석하지 않음 |
+| `possible_misunderstanding` | **항상 `null`** | 인과 추론이 A/B를 조용히 뒤집는 사례가 있어 발행을 보류 |
+
+코드 주석: *"Free-form causal inference can silently reverse A/B even with role prompts.
+Until source/actor grounding is available, do not publish this speculation."*
+
+PRD §13 "AI가 하지 않아야 하는 일"을 프롬프트가 아니라 **코드로** 강제한 것이다. DB 스키마에
+`possible_misunderstanding` 컬럼은 있으나 현재 구현은 절대 채우지 않는다.
+
+`mode: "local"`일 때는 LLM 없이 A·B의 진술을 화자 표기와 함께 나열하고, `common_ground`는
+빈 배열로 둔다. 합의점을 추론하는 척하지 않는다.
+
+---
+
+## 6. 사건·링크 계층 — **미구현**
+
+아래는 설계만 존재한다. 코드가 없으므로 구현 시 재검토 대상이다.
+
+### 6.1 인증·권한 모델
 
 | 토큰 | 발급 | 저장 위치 | 용도 |
 | --- | --- | --- | --- |
-| `public_token` | 사건 생성 시 | A→B 공유 링크, 양쪽 브라우저 | 모든 조회·쓰기의 열쇠 |
-| `writer_token` | 사건 생성 시 (A에게만) | **A 브라우저에만** | 고소장 확정 권한 |
+| `public_token` | 사건 생성 시 | 공유 링크, 양쪽 브라우저 | 모든 조회·쓰기의 열쇠 |
+| `writer_token` | 사건 생성 시 (A에게만) | A 브라우저에만 | 고소장 확정 권한 (A-3) |
 
-서버는 둘 다 **SHA-256 hex 해시만** 저장하고 원문은 보관하지 않는다.
+서버는 둘 다 SHA-256 hex 해시만 저장한다. B에게는 토큰을 주지 않는다 — "링크를 가진 사람이
+B"가 설계 전제이며(DFD §2-4), 중복 제출은 DB의 PK·UNIQUE가 막는다.
 
-### B에게는 토큰을 주지 않는다
+### 6.2 예정 엔드포인트
 
-"링크를 가진 사람이 B"라는 것이 설계 전제다(DFD §2-4). B의 응답에 별도 토큰을 요구하면
-링크 하나로 전달이 끝나는 구조가 깨진다. 중복·동시 제출은 토큰이 아니라 **DB의 PK·UNIQUE
-제약**이 막는다(`Supabase_Schema_Design.md` D-3).
-
-남는 위험은 "링크를 입수한 제3자가 B인 척 응답한다"인데, 이는 링크 기반 설계의 본질적
-한계이며 PRD §7 "로그인 없는 단일 링크의 한계"가 이미 수용한 것이다.
-
-### 전달 방식
-
-| 토큰 | 전달 | 이유 |
+| Method | Path | 상태 전이 |
 | --- | --- | --- |
-| `public_token` | URL 경로 (`/api/cases/{token}`) | 링크 자체이므로 경로가 자연스러움 |
-| `writer_token` | `X-Writer-Token` 헤더 | 쿼리스트링·경로에 넣으면 접근 로그에 남음 |
+| `POST` | `/api/cases` | → `DRAFT` |
+| `GET` | `/api/cases/{token}` | — |
+| `POST` | `/api/cases/{token}/statement` | `DRAFT`→`AWAITING_RESPONSE` / `COUNTER_DRAFT`→`COUNTER_COMPLETED` |
+| `POST` | `/api/cases/{token}/response-type` | `AWAITING_RESPONSE`→`*_DRAFT` |
+| `POST` | `/api/cases/{token}/apology` | `APOLOGY_DRAFT`→`APOLOGY_COMPLETED` |
 
-> **⚠️ 미결 — 접근 로그에 `public_token`이 남는다.** 경로에 토큰이 있으면 Nginx 접근
-> 로그에 원문이 그대로 쌓인다. DB는 해시만 저장해도 로그에서 새면 의미가 없다.
-> 로그를 읽을 수 있는 사람은 임의의 사건을 열람할 수 있다.
->
-> 권장안은 **경로를 유지하고 Nginx `log_format`에서 `/api/cases/` 뒤를 마스킹**하는 것이다.
-> REST 관례를 지키면서 실제 유출 지점을 막는다. 대안은 토큰도 헤더로 옮기는 것이나, 경로가
-> `/api/cases/current` 식이 되어 어색하다.
->
-> 프론트 URL(`/case/{token}`)의 토큰은 링크 자체라 피할 수 없다. 막을 수 있는 것은 API
-> 로그뿐이며, 실제로 새는 지점도 거기다. §9-1 참고.
+대화(§4)와 리포트(§5)는 이미 독립 엔드포인트로 존재하므로, 사건 계층은 이들을 감싸는 것이
+아니라 **결과물을 저장하고 상태를 전이시키는 역할**만 맡는다.
 
----
-
-## 4. 엔드포인트
-
-기준 경로는 `/api`다. Nginx가 `/api`를 `backend:8000`으로 넘긴다(`Tech_ADR.md` CI/CD 그림).
-
-| # | Method | Path | 상태 전이 |
-| --- | --- | --- | --- |
-| 1 | `POST` | `/api/cases` | → `DRAFT` |
-| 2 | `GET` | `/api/cases/{token}` | — |
-| 3 | `POST` | `/api/cases/{token}/conversation` | — |
-| 4 | `POST` | `/api/cases/{token}/statement` | `DRAFT`→`AWAITING_RESPONSE` 또는 `COUNTER_DRAFT`→`COUNTER_COMPLETED` |
-| 5 | `POST` | `/api/cases/{token}/response-type` | `AWAITING_RESPONSE`→`COUNTER_DRAFT` 또는 `APOLOGY_DRAFT` |
-| 6 | `POST` | `/api/cases/{token}/apology` | `APOLOGY_DRAFT`→`APOLOGY_COMPLETED` |
-
-### 4.0 공통 응답 봉투
-
-상태를 바꾸는 엔드포인트(4.4~4.6)는 **조회(§5)와 동일한 봉투**를 반환한다. 프론트는 파서를
-하나만 두고 모든 응답을 같은 방식으로 처리한다.
-
-```jsonc
-{
-  "status": "...",
-  "viewer_role": "A" | "B",
-  "expires_at": "...",
-  "available_actions": [...],
-  "content": { ... } | null
-}
-```
-
-아래 예시들은 지면을 위해 달라지는 필드만 보이지만, 실제 응답은 항상 이 다섯 키를 갖는다.
-사건 생성(4.1)만 예외다 — 토큰 원문을 돌려주는 유일한 응답이기 때문이다.
-
-### 4.1 사건 생성
-
-```
-POST /api/cases
-```
-
-요청 본문 없음. FR-01(로그인 없이 시작)을 만족한다.
-
-```jsonc
-// 201 Created
-{
-  "public_token": "8f3a...",      // 이후 URL에 사용. 서버는 해시만 보관
-  "writer_token": "c91b...",      // A 브라우저에만 저장할 것
-  "status": "DRAFT",
-  "expires_at": "2026-09-21T04:12:00Z"
-}
-```
-
-토큰 원문은 **이 응답에서만** 반환된다. 이후 어떤 조회로도 다시 얻을 수 없다.
-
-`expires_at`은 생성 시 `created_at + 7일`로 초기화된다. B의 최종 답변 시 갱신된다
-(`Supabase_Schema_Design.md` D-1).
-
-### 4.2 사건 조회
-
-```
-GET /api/cases/{token}
-X-Writer-Token: <있으면>          // 선택. viewer_role 판정에만 사용
-```
-
-응답 구조는 §5에서 다룬다.
-
-`writer_token`이 유효하면 `viewer_role: "A"`, 없거나 불일치하면 `"B"`다. **불일치를 오류로
-처리하지 않는다** — B는 애초에 이 토큰이 없으며, 토큰 없는 접근이 정상 경로다.
-
-### 4.3 AI 대화 (무상태)
-
-```
-POST /api/cases/{token}/conversation
-```
-
-```jsonc
-// 요청
-{
-  "side": "A",                    // A | B
-  "messages": [
-    {"role": "user",      "content": "어제 답장을 안 했어"},
-    {"role": "assistant", "content": "그때 어떤 기분이었어?"},
-    {"role": "user",      "content": "좀 서운했지"}
-  ]
-}
-```
-
-```jsonc
-// 200 — 정보가 더 필요한 경우
-{ "reply": "혹시 그때 상대가 뭐라고 했는지 기억나?", "ready": false, "draft": null }
-
-// 200 — 카드를 만들 수 있을 만큼 모인 경우
-{
-  "reply": null,
-  "ready": true,
-  "draft": {
-    "cute_charge": "연락두절죄",
-    "incident_summary": "답장을 세 시간 동안 안 했다",
-    "incident_description": "...",
-    "emotions": ["서운함", "불안"],
-    "emotion_reason": "...",
-    "different_viewpoint": null,
-    "desired_outcome": "바쁠 때 미리 한마디 남겨주기"
-  }
-}
-```
-
-**서버는 응답을 반환한 직후 `messages`를 버린다.** DB에도 로그에도 남지 않는다(§7).
-
-`reply`가 한 번에 질문 하나만 담는 것은 FR-02·PRD §8 "질문은 한 번에 하나씩"의 구현이다.
-
-`ready: true`가 된 뒤에도 클라이언트는 계속 대화를 이어갈 수 있다. `draft`는 제안일 뿐이며
-사용자가 수정할 수 있어야 한다(FR-04).
-
-이 엔드포인트는 상태를 바꾸지 않는다. 대화는 몇 번이든 오갈 수 있고, 사건 행에는 아무것도
-쓰이지 않는다.
-
-### 4.4 카드 확정
-
-```
-POST /api/cases/{token}/statement
-X-Writer-Token: <A인 경우 필수>
-```
-
-```jsonc
-// 요청 — 4.3의 draft를 사용자가 수정한 최종본
-{
-  "side": "A",
-  "card": {
-    "cute_charge": "연락두절죄",
-    "incident_summary": "...",
-    "incident_description": "...",
-    "emotions": ["서운함", "불안"],
-    "emotion_reason": "...",
-    "different_viewpoint": null,
-    "desired_outcome": "..."
-  }
-}
-```
-
-A와 B가 같은 엔드포인트를 쓰는 이유는 동작이 "확정된 카드를 저장한다"로 동일하기 때문이다.
-차이는 둘뿐이다.
-
-| | A (`side: "A"`) | B (`side: "B"`) |
-| --- | --- | --- |
-| 권한 | `X-Writer-Token` 필수 | 불필요 |
-| 요구 상태 | `DRAFT` | `COUNTER_DRAFT` |
-| 부가 처리 | 없음 | **중재 리포트까지 같은 요청에서 생성** |
-| 전이 후 | `AWAITING_RESPONSE` | `COUNTER_COMPLETED` |
-
-```jsonc
-// 200 — side: "A"
-{ "status": "AWAITING_RESPONSE", "expires_at": "..." }
-
-// 200 — side: "B" (리포트 포함)
-{
-  "status": "COUNTER_COMPLETED",
-  "expires_at": "2026-09-21T09:30:00Z",   // 이 시점 + 7일로 갱신됨
-  "content": {
-    "cards": { "A": {...}, "B": {...} },
-    "report": {
-      "common_ground": ["둘 다 서로를 신경 쓰고 있었다"],
-      "different_views": ["연락 빈도에 대한 기대가 달랐다"],
-      "hurt_points_a": ["답장이 없던 세 시간"],
-      "hurt_points_b": ["상황을 묻지 않고 화낸 점"],
-      "possible_misunderstanding": null,
-      "conversation_starter": "다음엔 바쁠 때 미리 한마디 남기는 건 어때?"
-    }
-  }
-}
-```
-
-`side: "B"`는 LLM을 **2회** 호출한다(B 카드 구조화 + A·B 카드로부터 중재 리포트 생성).
-A-2에 따라 완료될 때까지 응답하지 않는다. §9-2의 타임아웃 확인이 선행되어야 한다.
-
-**저장은 한 트랜잭션이다.** B 카드·리포트 저장과 `cases` 전이(`status`, `answered_at`,
-`expires_at`)가 함께 커밋되거나 함께 실패한다. 리포트 생성이 실패하면 B 카드도 저장되지
-않으므로 사용자는 온전히 재시도할 수 있다.
-
-### 4.5 응답 방식 선택
-
-```
-POST /api/cases/{token}/response-type
-```
-
-```jsonc
-// 요청
-{ "response_type": "COUNTER" }   // COUNTER | APOLOGY
-
-// 200
-{ "status": "COUNTER_DRAFT", "available_actions": ["submit_statement"] }
-```
-
-FR-07의 구현이다. `AWAITING_RESPONSE`에서만 허용된다.
-
-선택을 되돌리는 것(맞고소 → 사과)은 MVP에서 지원하지 않는다. 이미 `*_DRAFT`인 사건에
-다시 호출하면 409 `INVALID_STATE`다.
-
-### 4.6 사과문 제출
-
-```
-POST /api/cases/{token}/apology
-```
-
-```jsonc
-// 요청
-{
-  "body": "늦어서 미안해",              // 필수
-  "understood_point": "기다리는 시간이 길었겠다",
-  "future_commitment": "다음엔 미리 연락할게"
-}
-```
-
-```jsonc
-// 200
-{
-  "status": "APOLOGY_COMPLETED",
-  "expires_at": "...",
-  "content": { "cards": { "A": {...} }, "apology": {...} }
-}
-```
-
-**B가 입력한 텍스트를 그대로 저장한다.** AI를 호출하지 않으며 파생 필드를 만들지 않는다
-(PRD §13, DFD §8.2). MVP는 AI가 사과문을 대신 쓰는 기능을 제외한다(PRD §15).
-
-`APOLOGY_DRAFT`에서만 허용된다.
-
----
-
-## 5. 조회 응답 구조
-
-상태에 따라 내용이 갈리지만 껍데기는 하나다. 프론트는 `status`로 화면을 고른다.
+### 6.3 조회 응답 (A-5)
 
 ```jsonc
 {
   "status": "COUNTER_COMPLETED",
-  "viewer_role": "B",                    // A | B
+  "viewer_role": "B",
   "expires_at": "2026-09-21T09:30:00Z",
   "available_actions": [],
-  "content": { /* 아래 표 */ }
+  "content": { "cards": {...}, "report": {...} }
 }
 ```
 
-| 상태 | `content` | `available_actions` (A) | `available_actions` (B) |
+| 상태 | `content` | `available_actions` (A) | (B) |
 | --- | --- | --- | --- |
 | `DRAFT` | `null` | `["converse", "submit_statement"]` | `[]` |
-| `AWAITING_RESPONSE` | `{cards: {A}}` | `[]` | `["choose_response_type"]` |
-| `COUNTER_DRAFT` | `{cards: {A}}` | `[]` | `["converse", "submit_statement"]` |
-| `APOLOGY_DRAFT` | `{cards: {A}}` | `[]` | `["submit_apology"]` |
-| `COUNTER_COMPLETED` | `{cards: {A,B}, report}` | `[]` | `[]` |
-| `APOLOGY_COMPLETED` | `{cards: {A}, apology}` | `[]` | `[]` |
-| `EXPIRED` | `null` | `[]` | `[]` |
+| `AWAITING_RESPONSE` | `{cards:{A}}` | `[]` | `["choose_response_type"]` |
+| `COUNTER_DRAFT` | `{cards:{A}}` | `[]` | `["converse", "submit_statement"]` |
+| `APOLOGY_DRAFT` | `{cards:{A}}` | `[]` | `["submit_apology"]` |
+| `COUNTER_COMPLETED` | `{cards:{A,B}, report}` | `[]` | `[]` |
+| `APOLOGY_COMPLETED` | `{cards:{A}, apology}` | `[]` | `[]` |
 
-`DRAFT` 상태에서 `viewer_role: "B"`는 아직 링크가 전달되지 않았어야 할 상황이다.
-`content: null`과 빈 `available_actions`를 돌려주고 프론트는 안내 화면을 띄운다
-(DFD §7.2 역할 판정 흐름의 `GUARD` 분기).
+`EXPIRED`는 200으로 나오지 않는다 — 만료 검사가 앞에서 410을 던진다(§7.3).
 
-**`EXPIRED`는 200 응답으로 나오지 않는다.** 만료 검사(§6)가 앞에서 410을 던지므로 이 상태의
-사건은 조회에 성공하지 못한다. 표에 남긴 것은 상태 열거의 완전성을 위한 것이며, 프론트는
-만료 화면을 200 응답이 아니라 **410 응답에서** 띄운다.
+### 6.4 사과문 제출
+
+B가 입력한 텍스트를 **그대로** 저장한다. AI를 호출하지 않고 파생 필드를 만들지 않는다
+(PRD §13, DFD §8.2).
 
 ---
 
-## 6. 오류 규약
+## 7. 오류 규약
+
+### 7.1 현재 형식 — **구현됨**
+
+FastAPI 기본 형식을 쓴다.
 
 ```jsonc
-{ "code": "CASE_EXPIRED", "message": "만료된 사건입니다." }
+{ "detail": "Message must not be blank" }
 ```
 
-| 상황 (PRD §14) | HTTP | `code` |
+| 상황 | HTTP | `detail` | 위치 |
+| --- | --- | --- | --- |
+| `message`가 공백 | 400 | `Message must not be blank` | `conversation.py` |
+| 대화 처리 실패 | 502 | `Conversation processing failed. Please retry.` | `conversation.py` |
+| 리포트 생성 실패 | 502 | `Report generation failed. Please retry.` | `mediation.py` |
+| 요청 형식 오류 | 422 | `Invalid request` | `main.py` 전역 핸들러 |
+
+502 응답은 **provider 예외를 노출하지 않는다.** `raise ... from None`으로 원인 체인을 끊고
+고정 문구만 반환한다. PRD §14 "AI 생성 실패 → 입력을 유지한 채 재시도 안내"에 대응한다.
+
+### 7.2 사건 계층 오류 — **미구현**
+
+사건·토큰이 생기면 다음이 필요하다.
+
+| 상황 (PRD §14) | HTTP | 비고 |
 | --- | --- | --- |
-| 없는 토큰 | 404 | `CASE_NOT_FOUND` |
-| 만료된 링크 | **410** | `CASE_EXPIRED` |
-| `writer_token` 없음/불일치 | 403 | `WRITER_TOKEN_INVALID` |
-| 현재 상태에서 불가능한 행동 | 409 | `INVALID_STATE` |
-| 중복·동시 제출 | 409 | `ALREADY_SUBMITTED` |
-| AI 생성 실패 | 502 | `AI_GENERATION_FAILED` |
-| 위험 내용 감지 | 422 | `SAFETY_BLOCKED` |
-| 입력 형식 오류 | 400 | `INVALID_REQUEST` |
+| 없는 토큰 | 404 | |
+| 만료된 링크 | **410** | PRD §9.9 만료 화면을 오류 화면과 구분하기 위함 |
+| `writer_token` 불일치 | 403 | |
+| 불가능한 상태 전이 | 409 | 조건부 UPDATE의 영향 행이 0일 때 |
+| 중복·동시 제출 | 409 | 프론트는 오류가 아니라 **읽기 전용 리포트로 이동** |
 
-### 410을 쓰는 이유
+> **미결 — 오류 형식이 갈라져 있다.** 현재 구현은 `{"detail": "..."}`이고 위 표는 기계가
+> 분기할 `code`를 전제로 한다. 사건 계층 구현 시 둘 중 하나를 정해야 한다. 기존 두
+> 엔드포인트까지 `{code, message}`로 바꾸면 프론트 수정이 따라온다. §8-3 참고.
 
-만료를 404와 구분한다. PRD §9.9의 만료 화면이 일반 오류 화면과 별개로 존재하므로 프론트가
-둘을 구별할 수 있어야 한다. 어느 쪽이든 **사건 내용은 반환하지 않는다**(PRD §14).
+### 7.3 만료 검사 — **미구현**
 
-### 409 — 중복 제출은 오류가 아니라 정상 경로다
-
-DFD §7.2의 조건부 UPDATE에서 영향 행이 0이면 409를 던진다.
-
-```sql
-update cases set status = 'COUNTER_COMPLETED', ...
- where id = $1 and status = 'COUNTER_DRAFT';
-```
-
-프론트는 409 `ALREADY_SUBMITTED`를 받으면 오류 화면이 아니라 **읽기 전용 리포트로
-이동**시킨다(PRD §14 "최종 상태에서 재제출 → 읽기 전용 리포트로 이동"). 사용자 입장에서는
-이미 제출이 끝난 것이므로 실패가 아니다.
-
-### 만료 검사는 모든 사건 엔드포인트에서
-
-조회 직후 `expires_at <= now()`를 확인하고 지났으면 즉시 410을 반환한다. 이것이 DFD §7.3이
-말하는 **접근 시점 검사(lazy)** 이며, `pg_cron` 배치가 최대 1시간 지연되는 틈을 막는 유일한
-수단이다. 배치만으로는 그 사이 만료된 내용이 노출된다.
+사건 엔드포인트는 조회 직후 `expires_at <= now()`를 확인하고 지났으면 410을 반환해야 한다.
+DFD §7.3의 **접근 시점 검사(lazy)** 이며, `pg_cron` 배치가 최대 1시간 지연되는 틈을 막는
+유일한 수단이다.
 
 ---
 
-## 7. 원문 비저장을 코드에서 보장하는 지점
+## 8. 설계와 구현의 불일치
 
-DFD §9의 검수 항목 중 **스키마가 보장하지 못하고 구현이 책임지는 것**들이다.
-스키마에는 원문 컬럼이 아예 없으므로 DB 유출은 구조적으로 불가능하지만, 로그와 분석은
-코드가 막아야 한다.
+문서를 구현에 맞추는 과정에서 드러난 항목이다. 코드 수정이 필요한 것과 문서만 고치면 되는
+것을 구분한다.
 
-| 지점 | 조치 |
+### 8-1. 카드 형태가 DB 스키마와 다르다 — **코드/스키마 결정 필요**
+
+| | 필드 |
 | --- | --- |
-| FastAPI 422 기본 응답 | **입력값을 그대로 에코한다.** `RequestValidationError` 핸들러를 커스텀해 `messages`·`card`·`body` 필드를 마스킹 |
-| 예외 로그 | 전역 예외 핸들러에서 request body를 로그에 남기지 않음 |
-| Pydantic 모델 | `messages`를 담는 모델 필드에 `repr=False` |
-| AI 호출 실패 | 로그에 프롬프트·원문 미포함 (PRD §14 명시 요구) |
-| 분석 이벤트 | "카드 생성됨" 같은 사실만 기록, 내용 미포함 (DFD §7.1) |
-| 접근 로그 | §3의 토큰 마스킹 (미결) |
+| API `SharedStatement` | `incident`, `feeling`, `wish`, `expectation`, `guess` |
+| DB `statement_cards` | `cute_charge`, `incident_summary`, `incident_description`, `emotions[]`, `emotion_reason`, `different_viewpoint`, `desired_outcome` |
+| 프론트 `types.ts` `Statement` | `incident`, `feeling`, `wish` |
 
-**첫 줄이 가장 놓치기 쉽다.** FastAPI는 검증 실패 시 422 응답 본문에 어떤 값이 잘못됐는지를
-입력값과 함께 담아 돌려준다. 기본 동작을 그대로 두면 대화 원문이 응답과 로그 양쪽에 실린다.
-커스텀 핸들러는 선택이 아니라 필수다.
+**API는 프론트 목업 타입을 따랐고 DB 스키마를 따르지 않았다.** 현재는 저장 계층이 없어
+문제가 드러나지 않지만, §6을 구현하는 순간 변환이 필요하다.
+
+셋 중 어느 쪽으로 맞출지는 결정 사항이다. DB 쪽이 PRD §11 데이터 구조 초안에서 왔고
+`cute_charge`(귀여운 죄명) 같은 제품 핵심 필드를 담고 있으므로, **API·프론트를 DB 쪽으로
+확장하는 방향**이 자연스러워 보이나 프론트 변경 범위가 크다.
+
+### 8-2. 네이밍 규칙이 엔드포인트마다 다르다 — **코드 수정 권장**
+
+`complaint` 계열은 camelCase alias를 쓰고(`conversationId`, `assistantMessage`),
+`mediation` 계열은 snake_case를 쓴다(`common_ground`, `hurt_points_a`). 같은 API 안에서
+두 규칙이 섞여 프론트가 엔드포인트마다 다르게 매핑해야 한다.
+
+값 리터럴도 섞여 있다 — `missingFields`(camelCase 필드)의 값은 `hurt_point`(snake_case)다.
+
+### 8-3. 오류 응답 형식 — **결정 필요**
+
+§7.2 참고.
+
+### 8-4. 사건 식별자가 없다 — **구현 대기**
+
+`conversationId`의 기본값이 `"temp"`이고 서버는 이 값을 그대로 되돌려줄 뿐 아무 의미를
+부여하지 않는다. 현재 API는 **어느 사건의 대화인지 알지 못한다.** §6이 구현되면
+`public_token`이 그 역할을 맡는다.
+
+### 8-5. 문서가 틀렸던 것 — **문서 수정 완료**
+
+이번 개정에서 구현에 맞춰 고친 항목이다.
+
+- 대화 엔드포인트 경로: `/api/cases/{token}/conversation` → `/api/complaint/conversation/message`
+- 대화 무상태 방식: 원문 전체 재전송 → **상태 객체 왕복**(§3 A-1)
+- 요청·응답 필드명: 전부 snake_case로 적었으나 실제는 camelCase(§4.1)
+- 리포트를 `statement` 엔드포인트가 겸한다고 적었으나 실제는 **독립 엔드포인트**(§5)
 
 ---
 
-## 8. 선행 작업 — 스키마 변경
+## 9. 원문 비저장 — 구현된 보장 지점
 
-`cases` 테이블에 `writer_token_hash` 컬럼이 없다. A-3을 구현하려면 마이그레이션이 하나
-필요하다.
+DFD §9의 검수 항목 중 **구현이 책임지는 것**들이다. 상당수가 이미 코드에 들어가 있다.
+
+| 지점 | 상태 | 내용 |
+| --- | --- | --- |
+| 422 응답이 입력값을 에코 | **구현됨** | `main.py` 전역 핸들러가 `{"detail": "Invalid request"}` 고정 반환 |
+| 예외에 원문·프롬프트 노출 | **구현됨** | `raise ... from None`으로 체인 차단, 고정 문구만 |
+| 응답 캐싱 | **구현됨** | 대화·리포트 응답에 `Cache-Control: no-store` |
+| 외부 AI 제공자 보관 | **구현됨** | OpenAI 호출에 `store=False` — §10 참고 |
+| OpenAI 로깅 | **구현됨** | `openai_gateway`가 요청·응답 본문을 로그에 남기지 않음 |
+| 서버 영속 저장 | **구현됨(구조적)** | DB 접근 코드 자체가 없음 |
+| 접근 로그의 토큰 | **미구현** | §10-1 |
+| 분석 이벤트 | **해당 없음** | 분석 도구 미도입 |
+
+### `store=False`가 해소한 것
+
+`openai_gateway.call_openai_json_chat()`은 `store=False`로 호출한다. OpenAI가 요청·응답을
+보관하지 않는다는 뜻이며, **DFD §10-2·§10-3("외부 AI 제공자의 요청 보관·학습 정책",
+"무보관 옵션 필수 적용 여부")이 코드 차원에서 결정됐다.**
+
+타임아웃 25초, 재시도 0회로 설정돼 있다. 재시도를 끄면 실패가 빨리 드러나고 원문이
+불필요하게 재전송되지 않는다.
+
+---
+
+## 10. 남은 미결 사항
+
+| # | 항목 | 정해야 할 시점 |
+| --- | --- | --- |
+| 1 | 접근 로그의 `public_token` 마스킹 (Nginx `log_format`) | §6 구현 후 배포 전 |
+| 2 | 카드 형태 통일 방향 (§8-1) | §6 착수 전 — **가장 시급** |
+| 3 | 오류 응답 형식 통일 (§8-3) | §6 착수 전 |
+| 4 | 네이밍 규칙 통일 (§8-2) | 가능하면 프론트 연결 전 |
+| 5 | 동기 응답이 Nginx·브라우저 타임아웃 안에 드는지 실측 | 맞고소 경로 연결 시 |
+| 6 | 위험 내용 감지 기준과 응답 (PRD §14) | 안전 검증 단계 |
+| 7 | 사건당 대화 턴 수 상한 (LLM 비용 방어) | 비용 추이를 보고 |
+| 8 | 백엔드 DB 접근 계층 선택 | §6 착수 시 |
+
+2번이 가장 시급하다. §6을 먼저 만들고 나면 API·프론트·DB 세 곳을 동시에 고쳐야 한다.
+
+5번은 A-2(동기)의 유일한 실질 위험이다. OpenAI 타임아웃이 25초이고 맞고소 경로는 호출이
+2회이므로 최악 50초가 나올 수 있다. Nginx 기본 `proxy_read_timeout`은 60초라 아슬아슬하다.
+
+### 해소된 항목
+
+- ~~LLM 제공자 선정~~ → **OpenAI, `gpt-4.1-mini`** (`core/config.py`). `Tech_ADR.md`
+  미해결 항목에서 내려야 한다.
+- ~~스트림 형식~~ → 비스트리밍 (A-4)
+- ~~외부 AI 제공자 보관 정책~~ → `store=False` (§9)
+
+---
+
+## 11. 구현 순서
+
+PRD §18에 맞춘다. 2·4단계는 이미 끝났고, 남은 것은 사건 계층이다.
+
+| 단계 | 내용 | 상태 |
+| --- | --- | --- |
+| 2 | A의 고소장 생성 대화 | **구현됨** (§4) |
+| 4 | 맞고소 중재 리포트 | **구현됨** (§5) |
+| 1 | 사건·단일 링크 기반 — `writer_token` 마이그레이션, `POST /api/cases`, `GET /api/cases/{token}`, 만료 lazy 검사 | 미구현 |
+| 3 | B의 응답 분기 — `response-type` | 미구현 |
+| 5 | 사과 종결 — `apology` | 미구현 |
+| 6 | 안전·품질 검증 | 부분 (§9) |
+
+**1단계 착수 전에 §10-2(카드 형태)를 먼저 정해야 한다.** 저장 계층이 생기는 순간
+`SharedStatement`와 `statement_cards`를 잇는 변환이 필요해지고, 그때 형태를 바꾸면
+이미 붙은 프론트까지 함께 고쳐야 한다.
+
+1단계에서 만료 lazy 검사(§7.3)를 함께 넣는다. 나중에 붙이면 모든 조회 경로를 다시 훑어야
+한다.
+
+### 선행 마이그레이션
+
+A-3을 구현하려면 `cases`에 컬럼이 하나 필요하다.
 
 ```sql
 -- supabase/migrations/<타임스탬프>_add_writer_token.sql
 alter table cases add column writer_token_hash text;
 ```
 
-파일명 타임스탬프는 생성 시점에 확정한다. 기존 `20260912113100`보다 커야 순서가 보장된다.
-
-기존 행이 없으므로 nullable로 추가하면 되고 백필도 필요 없다. 적용은
+기존 행이 없어 nullable로 추가하면 되고 백필도 불필요하다. 적용은
 `Supabase_Schema_Design.md` §8 절차를 따른다 — **머지만으로는 반영되지 않으며
 `supabase db push`가 필요하다**(`Tech_ADR.md` §10).
-
-백엔드에는 아직 DB 라이브러리가 없다(`backend/pyproject.toml`에 fastapi·uvicorn·
-pydantic-settings뿐). 접근 계층 선택은 이 문서 범위 밖이며 구현 착수 시 정한다.
-
----
-
-## 9. 남은 미결 사항
-
-| # | 항목 | 정해야 할 시점 |
-| --- | --- | --- |
-| 1 | 접근 로그의 `public_token` 마스킹 방식 (§3) | 배포 전 |
-| 2 | 동기 응답(§4.4)이 Nginx·브라우저 타임아웃 안에 드는지 확인 | 맞고소 경로 구현 시 |
-| 3 | LLM 제공자 선정 (`Tech_ADR.md` 미해결) | AI 대화 구현 전 |
-| 4 | 위험 내용 감지 기준과 `SAFETY_BLOCKED` 응답 문구 (PRD §14) | 안전 검증 단계 |
-| 5 | 사건당 대화 턴 수 상한 (LLM 비용 방어) | 비용 추이를 보고 |
-| 6 | 백엔드 DB 접근 계층 선택 | 구현 착수 시 |
-
-2번이 A-2의 유일한 실질 위험이다. LLM 2회 호출이 수십 초로 늘어나면 동기 방식이 깨지고
-비동기로 재설계해야 한다. 구현 초기에 실측할 것.
-
----
-
-## 10. 구현 순서
-
-PRD §18 구현 단계에 맞춘다. 각 단계는 앞 단계의 엔드포인트를 전제로 한다.
-
-| 단계 | 엔드포인트 | PRD §18 대응 |
-| --- | --- | --- |
-| 1 | §8 마이그레이션, `POST /api/cases`, `GET /api/cases/{token}` | 1단계 — 사건 및 단일 링크 기반 |
-| 2 | `POST .../conversation`, `POST .../statement` (A) | 2단계 — A의 고소장 생성 |
-| 3 | `POST .../response-type` | 3단계 — B의 응답 분기 |
-| 4 | `POST .../statement` (B, 리포트 포함) | 4단계 — 맞고소 리포트 |
-| 5 | `POST .../apology` | 5단계 — 사과 종결 |
-| 6 | §7 전 항목 점검, §6 만료 검사 검증 | 6단계 — 안전·품질 검증 |
-
-1단계에서 만료 lazy 검사(§6)를 함께 넣는다. 나중에 붙이면 이미 구현된 모든 조회 경로를
-다시 훑어야 한다.
