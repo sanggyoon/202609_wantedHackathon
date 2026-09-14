@@ -36,8 +36,13 @@
 backend/app/
   main.py                      FastAPI 앱, CORS, 422 핸들러
   api/health.py                GET  /api/health
+  api/cases.py                 POST /api/cases, GET /api/cases/{token}
   api/conversation.py          POST /api/complaint/conversation/message
   api/mediation.py             POST /api/mediation/report
+  db.py                        지연 생성 커넥션 풀
+  core/tokens.py               토큰 발급·해시·상수시간 비교
+  repositories/cases.py        사건 영속 계층 (SQL은 여기에만)
+  schemas/case.py              사건 뷰 모델, available_actions 표
   schemas/complaint.py         대화 상태·요청·응답 모델
   schemas/mediation.py         리포트 모델
   services/complaint_engine.py 대화 처리 (1,125줄)
@@ -51,14 +56,17 @@ backend/app/
 | --- | --- |
 | AI 대화 | **구현됨** — §4 |
 | 맞고소 리포트 생성 | **구현됨** — §5 |
-| 사건 작성 시작 / 조회 | **미구현** — §6 |
+| 사건 작성 시작 / 조회 | **구현됨** — §6 |
 | 고소장 확정 (영속 저장) | **미구현** — §6 |
 | 응답 방식 선택 | **미구현** — §6 |
 | 사과 제출 | **미구현** — §6 |
 
-**백엔드에 DB 접근 코드가 전혀 없다.** `config.py`에 `database_url`·`supabase_*` 값이
-선언돼 있으나 어떤 모듈도 사용하지 않는다. 적용된 Supabase 스키마는 아직 백엔드와
-연결되지 않았고, 현재 API는 **사건을 식별하지도 저장하지도 않는다.**
+DB 접근은 `psycopg` 3으로 한다. **풀은 최초 사용 시점에 만들어진다** — import 시점에
+연결하면 `DATABASE_URL`이 없는 환경에서 앱이 뜨지 않고, CI의 `import app.main` 검증도
+깨진다.
+
+Supabase Transaction pooler(PgBouncer)는 prepared statement를 세션 간에 유지하지 못하므로
+`prepare_threshold=None`으로 끈다. 켜두면 간헐적으로 실패한다.
 
 프론트는 이미 두 엔드포인트에 연결돼 있다. `Frontend_Architecture.md` §9가 요구한
 어댑터 계층이 `frontend/src/lib/api/{conversation,mediation}.ts`로 존재하고,
@@ -265,9 +273,10 @@ PRD §13 "AI가 하지 않아야 하는 일"을 프롬프트가 아니라 **코�
 
 ---
 
-## 6. 사건·링크 계층 — **미구현**
+## 6. 사건·링크 계층
 
-아래는 설계만 존재한다. 코드가 없으므로 구현 시 재검토 대상이다.
+`POST /api/cases`와 `GET /api/cases/{token}`은 **구현됨**. 나머지 엔드포인트(§6.2의
+`statement`·`response-type`·`apology`)는 아직 미구현이다.
 
 ### 6.1 인증·권한 모델
 
@@ -281,13 +290,20 @@ B"가 설계 전제이며(DFD §2-4), 중복 제출은 DB의 PK·UNIQUE가 막�
 
 ### 6.2 예정 엔드포인트
 
-| Method | Path | 상태 전이 |
-| --- | --- | --- |
-| `POST` | `/api/cases` | → `DRAFT` |
-| `GET` | `/api/cases/{token}` | — |
-| `POST` | `/api/cases/{token}/statement` | `DRAFT`→`AWAITING_RESPONSE` / `COUNTER_DRAFT`→`COUNTER_COMPLETED` |
-| `POST` | `/api/cases/{token}/response-type` | `AWAITING_RESPONSE`→`*_DRAFT` |
-| `POST` | `/api/cases/{token}/apology` | `APOLOGY_DRAFT`→`APOLOGY_COMPLETED` |
+| Method | Path | 상태 전이 | 상태 |
+| --- | --- | --- | --- |
+| `POST` | `/api/cases` | → `DRAFT` | **구현됨** |
+| `GET` | `/api/cases/{token}` | — | **구현됨** |
+| `POST` | `/api/cases/{token}/statement` | `DRAFT`→`AWAITING_RESPONSE` / `COUNTER_DRAFT`→`COUNTER_COMPLETED` | 미구현 |
+| `POST` | `/api/cases/{token}/response-type` | `AWAITING_RESPONSE`→`*_DRAFT` | 미구현 |
+| `POST` | `/api/cases/{token}/apology` | `APOLOGY_DRAFT`→`APOLOGY_COMPLETED` | 미구현 |
+
+`POST /api/cases`는 토큰 원문이 노출되는 **유일한** 응답이다. 이후 어떤 조회로도 다시
+얻을 수 없다.
+
+`GET`의 `X-Writer-Token`은 선택이다. 유효하면 `viewer_role: "A"`, 없거나 불일치하면
+`"B"`다. **불일치를 오류로 처리하지 않는다** — B는 애초에 이 토큰이 없고, 토큰 없는 접근이
+정상 경로다.
 
 대화(§4)와 리포트(§5)는 이미 독립 엔드포인트로 존재하므로, 사건 계층은 이들을 감싸는 것이
 아니라 **결과물을 저장하고 상태를 전이시키는 역할**만 맡는다.
@@ -342,25 +358,28 @@ FastAPI 기본 형식을 쓴다.
 502 응답은 **provider 예외를 노출하지 않는다.** `raise ... from None`으로 원인 체인을 끊고
 고정 문구만 반환한다. PRD §14 "AI 생성 실패 → 입력을 유지한 채 재시도 안내"에 대응한다.
 
-### 7.2 사건 계층 오류 — **미구현**
+### 7.2 사건 계층 오류
 
-사건·토큰이 생기면 다음이 필요하다.
+조회 계열은 구현됐고, 쓰기 계열(403·409)은 해당 엔드포인트와 함께 구현된다.
 
-| 상황 (PRD §14) | HTTP | 비고 |
-| --- | --- | --- |
-| 없는 토큰 | 404 | |
-| 만료된 링크 | **410** | PRD §9.9 만료 화면을 오류 화면과 구분하기 위함 |
-| `writer_token` 불일치 | 403 | |
-| 불가능한 상태 전이 | 409 | 조건부 UPDATE의 영향 행이 0일 때 |
-| 중복·동시 제출 | 409 | 프론트는 오류가 아니라 **읽기 전용 리포트로 이동** |
+| 상황 (PRD §14) | HTTP | 상태 | 비고 |
+| --- | --- | --- | --- |
+| 없는 토큰 | 404 | **구현됨** | |
+| 만료된 링크 | **410** | **구현됨** | PRD §9.9 만료 화면을 오류 화면과 구분하기 위함 |
+| `DATABASE_URL` 미설정 | 503 | **구현됨** | 설정 누락을 사용자에게 자세히 알리지 않는다 |
+| `writer_token` 불일치 | 403 | 미구현 | **조회에서는 오류가 아니다**(§6.2). 쓰기에서만 403 |
+| 불가능한 상태 전이 | 409 | 미구현 | 조건부 UPDATE의 영향 행이 0일 때 |
+| 중복·동시 제출 | 409 | 미구현 | 프론트는 오류가 아니라 **읽기 전용 리포트로 이동** |
 
-> **미결 — 오류 형식이 갈라져 있다.** 현재 구현은 `{"detail": "..."}`이고 위 표는 기계가
-> 분기할 `code`를 전제로 한다. 사건 계층 구현 시 둘 중 하나를 정해야 한다. 기존 두
-> 엔드포인트까지 `{code, message}`로 바꾸면 프론트 수정이 따라온다. §8-3 참고.
+> **결정됨 (2026-09-15) — `{"detail": "..."}`을 유지한다.** 기계가 분기해야 하는 구분은
+> **HTTP 상태 코드가 이미 제공한다**(404 vs 410 vs 409). 별도 `code` 필드를 두면 같은
+> 정보를 두 곳에 적는 셈이고, 기존 두 엔드포인트까지 고쳐야 한다. `detail`은 사람이 읽는
+> 문구만 담는다.
 
-### 7.3 만료 검사 — **미구현**
+### 7.3 만료 검사 — **구현됨**
 
-사건 엔드포인트는 조회 직후 `expires_at <= now()`를 확인하고 지났으면 410을 반환해야 한다.
+`GET /api/cases/{token}`은 조회 직후 `expires_at <= now()`를 확인하고 지났으면 410을
+반환한다. `status`가 이미 `EXPIRED`인 경우도 같다. 어느 쪽이든 `content`를 담지 않는다.
 DFD §7.3의 **접근 시점 검사(lazy)** 이며, `pg_cron` 배치가 최대 1시간 지연되는 틈을 막는
 유일한 수단이다.
 
@@ -458,9 +477,9 @@ alter table apologies       add column admitted_point    text;
 
 값 리터럴도 섞여 있다 — `missingFields`(camelCase 필드)의 값은 `hurt_point`(snake_case)다.
 
-### 8-3. 오류 응답 형식 — **결정 필요**
+### 8-3. 오류 응답 형식 — **`{detail}` 유지로 결정 (2026-09-15)**
 
-§7.2 참고.
+§7.2 참고. HTTP 상태 코드가 기계 판독용 구분을 이미 제공하므로 `code` 필드를 두지 않는다.
 
 ### 8-4. 사건 식별자가 없다 — **구현 대기**
 
@@ -509,14 +528,14 @@ DFD §9의 검수 항목 중 **구현이 책임지는 것**들이다. 상당수�
 
 | # | 항목 | 정해야 할 시점 |
 | --- | --- | --- |
-| 1 | 접근 로그의 `public_token` 마스킹 (Nginx `log_format`) | §6 구현 후 배포 전 |
+| 1 | 접근 로그의 `public_token` 마스킹 (Nginx `log_format`) | **배포 전 — 이제 실제로 토큰이 경로에 실린다** |
 | 2 | `cute_charge`·`incident_summary`·`different_viewpoint`를 누가 생성할지 (§8-1) | 카드 저장 구현 전 |
-| 3 | 오류 응답 형식 통일 (§8-3) | §6 착수 전 |
+| 3 | ~~오류 응답 형식 통일~~ → `{detail}` 유지로 결정 (§8-3) | 해소됨 |
 | 4 | 대화 상태의 네이밍 규칙 (§8-2) — 카드는 해소됨 | 낮음 (DB 미저장 구조) |
 | 5 | 동기 응답이 Nginx·브라우저 타임아웃 안에 드는지 실측 | 맞고소 경로 연결 시 |
 | 6 | 위험 내용 감지 기준과 응답 (PRD §14) | 안전 검증 단계 |
 | 7 | 사건당 대화 턴 수 상한 (LLM 비용 방어) | 비용 추이를 보고 |
-| 8 | 백엔드 DB 접근 계층 선택 | §6 착수 시 |
+| 8 | ~~백엔드 DB 접근 계층 선택~~ → `psycopg` 3 (§2) | 해소됨 |
 | 9 | 배포 환경변수 배선 — `docker-compose.yml`에 `DATABASE_URL`·`OPENAI_API_KEY`가 없음 | §6 배포 전 |
 
 **해소됨.** 카드 형태 통일 방향 → DB 기준 (§8-1, 2026-09-14).
@@ -546,7 +565,7 @@ PRD §18에 맞춘다. 2·4단계는 이미 끝났고, 남은 것은 사건 계�
 | 2 | A의 고소장 생성 대화 | **구현됨** (§4) |
 | 4 | 맞고소 중재 리포트 | **구현됨** (§5) |
 | 0 | **카드 형태 통일** — 마이그레이션, `SharedStatement` 재정의, 프론트 타입·화면 수정 | **완료** (§8-1) |
-| 1 | 사건·단일 링크 기반 — `POST /api/cases`, `GET /api/cases/{token}`, 만료 lazy 검사 | 미구현 |
+| 1 | 사건·단일 링크 기반 — `POST /api/cases`, `GET /api/cases/{token}`, 만료 lazy 검사 | **구현됨** |
 | 3 | B의 응답 분기 — `response-type` | 미구현 |
 | 5 | 사과 종결 — `apology` | 미구현 |
 | 6 | 안전·품질 검증 | 부분 (§9) |
