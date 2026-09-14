@@ -1,10 +1,10 @@
 @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css");
 @import "tailwindcss";
 :root {
-  --primary: #1b1b32;
+  --primary: #0e5748;
   --text: #28272a;
-  --muted: #646468;
-  --border: #dfdfe1;
+  --muted: #5a5a5e;
+  --border: #d8d8da;
   --radius: 28px;
 }
 * {
