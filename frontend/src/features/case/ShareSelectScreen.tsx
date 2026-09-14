@@ -1,7 +1,11 @@
 "use client";
 import { useState } from "react";
 import { Button, Notice } from "@/components/ui";
-import type { Statement } from "@/features/report/types";
+import {
+  feelingText,
+  NOT_SHARED,
+  type Statement,
+} from "@/features/report/types";
 export function ShareSelectScreen({
   side,
   data,
@@ -12,20 +16,22 @@ export function ShareSelectScreen({
   onComplete: (data: Statement) => void;
 }) {
   const doc = side === "A" ? "고소장" : "맞고소장";
-  const first = data.incident.split(/[.!?。\n]/)[0];
+  const first = data.incident_description.split(/[.!?。\n]/)[0];
+  // 토글 하나가 여러 필드를 함께 덮는다. "감정"은 emotions·emotion_reason·
+  // hurt_point 셋을 한 묶음으로 공유한다 — 사용자에게는 한 항목으로 보인다.
   const items = [
     { key: "incident", label: "사건 내용", value: first },
-    { key: "feeling", label: "그때 느낀 감정", value: data.feeling },
-    { key: "wish", label: "상대에게 바라는 점", value: data.wish },
+    { key: "feeling", label: "그때 느낀 감정", value: feelingText(data) },
+    { key: "wish", label: "상대에게 바라는 점", value: data.desired_outcome },
     {
       key: "expectation",
       label: "내가 기대했던 것",
-      value: data.expectation || "",
+      value: data.expected_behavior || "",
     },
     {
       key: "guess",
       label: "내 추측 (사실이 아닐 수도 있어요)",
-      value: data.guess || "",
+      value: data.assumption || "",
     },
   ].filter((item) => item.value);
   const [selected, setSelected] = useState<Record<string, boolean>>(
@@ -72,11 +78,17 @@ export function ShareSelectScreen({
         onClick={() =>
           onComplete({
             ...data,
-            incident: selected.incident ? data.incident : "공유하지 않은 내용",
-            feeling: selected.feeling ? data.feeling : "공유하지 않은 내용",
-            wish: selected.wish ? data.wish : "공유하지 않은 내용",
-            expectation: selected.expectation ? data.expectation : "",
-            guess: selected.guess ? data.guess : "",
+            incident_description: selected.incident
+              ? data.incident_description
+              : NOT_SHARED,
+            emotions: selected.feeling ? data.emotions : [],
+            emotion_reason: selected.feeling ? data.emotion_reason : NOT_SHARED,
+            hurt_point: selected.feeling ? data.hurt_point : "",
+            desired_outcome: selected.wish ? data.desired_outcome : NOT_SHARED,
+            expected_behavior: selected.expectation
+              ? data.expected_behavior
+              : "",
+            assumption: selected.guess ? data.assumption : "",
           })
         }
       >

@@ -10,10 +10,10 @@ export function ApologyScreen({
   onSubmit: (value: Apology) => void;
 }) {
   const [value, setValue] = useState<Apology>({
-    understood: "",
-    admitted: "",
     body: "",
-    promise: "",
+    understood_point: "",
+    admitted_point: "",
+    future_commitment: "",
   });
   const [preview, setPreview] = useState(false);
   return (
@@ -28,24 +28,24 @@ export function ApologyScreen({
       {preview ? (
         <div className="panel">
           <span className="badge">🤝 화해 및 합의서</span>
-          {value.understood && (
+          {value.understood_point && (
             <>
               <h3>내가 이해한 상대의 마음</h3>
-              <p>{value.understood}</p>
+              <p>{value.understood_point}</p>
             </>
           )}
-          {value.admitted && (
+          {value.admitted_point && (
             <>
               <h3>내가 인정하는 부분</h3>
-              <p>{value.admitted}</p>
+              <p>{value.admitted_point}</p>
             </>
           )}
           <h3>상대에게 전하는 사과</h3>
           <p>{value.body}</p>
-          {value.promise && (
+          {value.future_commitment && (
             <>
               <h3>다음에는 이렇게 할게</h3>
-              <p>{value.promise}</p>
+              <p>{value.future_commitment}</p>
             </>
           )}
         </div>
@@ -54,12 +54,12 @@ export function ApologyScreen({
           {(
             [
               [
-                "understood",
+                "understood_point",
                 "내가 이해한 상대의 마음 (선택)",
                 "이번 일에서 상대가 왜 속상했는지, 어떤 부분이 가장 서운했을지 적어주세요.",
               ],
               [
-                "admitted",
+                "admitted_point",
                 "내가 인정하는 부분 (선택)",
                 "상대의 이야기 중 직접 인정하고 싶은 부분이 있다면 적어주세요. 억지로 채우지 않아도 괜찮아요.",
               ],
@@ -69,7 +69,7 @@ export function ApologyScreen({
                 "상대에게 전하고 싶은 사과를 직접 적어주세요. AI가 대신 쓰지 않아요.",
               ],
               [
-                "promise",
+                "future_commitment",
                 "다음에는 이렇게 할게 (선택)",
                 "비슷한 상황이 다시 생긴다면 어떻게 하고 싶은지 적어주세요.",
               ],

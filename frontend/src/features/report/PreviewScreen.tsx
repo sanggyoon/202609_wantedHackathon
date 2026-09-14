@@ -26,20 +26,37 @@ export function PreviewScreen({
         <div className="panel">
           {(
             [
-              ["incident", "사건 내용"],
-              ["feeling", "감정과 이유"],
-              ["wish", "바라는 점"],
+              ["incident_description", "사건 내용"],
+              ["emotion_reason", "감정의 이유"],
+              ["desired_outcome", "바라는 점"],
             ] as const
           ).map(([key, label]) => (
             <label className="field" key={key}>
               {label}
               <textarea
                 rows={3}
-                value={value[key]}
+                value={value[key] ?? ""}
                 onChange={(e) => setValue({ ...value, [key]: e.target.value })}
               />
             </label>
           ))}
+          {/* 감정은 목록이라 쉼표로 편집한다. 저장은 emotions[]로 간다. */}
+          <label className="field">
+            감정 (쉼표로 구분)
+            <textarea
+              rows={2}
+              value={value.emotions.join(", ")}
+              onChange={(e) =>
+                setValue({
+                  ...value,
+                  emotions: e.target.value
+                    .split(",")
+                    .map((v) => v.trim())
+                    .filter(Boolean),
+                })
+              }
+            />
+          </label>
         </div>
       ) : (
         <StatementCard side={side} data={value} />
@@ -49,7 +66,7 @@ export function PreviewScreen({
           {edit ? "미리보기" : "내용 수정"}
         </Button>
         <Button
-          disabled={[value.incident, value.feeling, value.wish].some(
+          disabled={[value.incident_description, value.desired_outcome].some(
             (v) => !v.trim(),
           )}
           onClick={() => onConfirm(value)}

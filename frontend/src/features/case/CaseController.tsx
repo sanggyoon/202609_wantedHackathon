@@ -199,7 +199,7 @@ export function CaseController({
     case "사과문 작성":
       content = (
         <ApologyScreen
-          summary={a.incident}
+          summary={a.incident_summary || a.incident_description}
           onSubmit={(v) => {
             setApology(v);
             setScreen("화해 성립");
@@ -216,28 +216,28 @@ export function CaseController({
           >
             여기까지 오느라 고생 많았어요. 두 분의 이야기를 천천히 읽어봐요.
           </Heading>
-          <Notice>신청인(A)의 사건: {a.incident}</Notice>
+          <Notice>신청인(A)의 사건: {a.incident_summary || a.incident_description}</Notice>
           <article className="card side-B">
             <h2 className="doc-title">사 과 문</h2>
             <p className="doc-case">마음을 담아 보내요.</p>
-            {apology.understood && (
+            {apology.understood_point && (
               <>
                 <h3>내가 이해한 상대의 마음</h3>
-                <p>{apology.understood}</p>
+                <p>{apology.understood_point}</p>
               </>
             )}
-            {apology.admitted && (
+            {apology.admitted_point && (
               <>
                 <h3>내가 인정하는 부분</h3>
-                <p>{apology.admitted}</p>
+                <p>{apology.admitted_point}</p>
               </>
             )}
             <h3>상대에게 전하는 사과</h3>
             <p>{apology.body}</p>
-            {apology.promise && (
+            {apology.future_commitment && (
               <>
                 <h3>다음에는 이렇게 할게</h3>
-                <p>{apology.promise}</p>
+                <p>{apology.future_commitment}</p>
               </>
             )}
           </article>
