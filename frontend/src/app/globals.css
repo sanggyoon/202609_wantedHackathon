@@ -459,6 +459,10 @@ select:focus {
   z-index: 100;
   box-shadow: 0 -8px 16px #f5f4f2;
 }
+.composer.live-composer {
+  display: grid;
+  align-items: stretch;
+}
 .composer textarea {
   flex: 1;
   min-width: 0;

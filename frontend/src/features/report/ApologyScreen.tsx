@@ -18,7 +18,10 @@ export function ApologyScreen({
   const [preview, setPreview] = useState(false);
   return (
     <>
-      <Heading label="화해 시도 · 사과 및 합의" title="당신의 말로, 마음을 전해볼까요?">
+      <Heading
+        label="화해 시도 · 사과 및 합의"
+        title="당신의 말로, 마음을 전해볼까요?"
+      >
         완벽한 문장보다 진심이 담긴 한마디면 충분해요. 제가 곁에서 도울게요.
       </Heading>
       <Notice>신청인이 접수한 사건: {summary}</Notice>
@@ -58,12 +61,12 @@ export function ApologyScreen({
               [
                 "admitted",
                 "내가 인정하는 부분 (선택)",
-                "상대의 이야기를 읽고 ‘이건 내가 잘못했구나’ 싶은 부분이 있다면 적어주세요.",
+                "상대의 이야기 중 직접 인정하고 싶은 부분이 있다면 적어주세요. 억지로 채우지 않아도 괜찮아요.",
               ],
               [
                 "body",
                 "상대에게 전하는 사과 (필수)",
-                "변명보다 마음을 먼저 전해볼까요? 상대에게 직접 이야기하듯 적어주세요.",
+                "상대에게 전하고 싶은 사과를 직접 적어주세요. AI가 대신 쓰지 않아요.",
               ],
               [
                 "promise",
@@ -89,9 +92,13 @@ export function ApologyScreen({
           {preview ? "수정하기" : "미리보기"}
         </Button>
         <Button disabled={!value.body.trim()} onClick={() => onSubmit(value)}>
-          화해 신청하기
+          사과문 보내기 (체험)
         </Button>
       </div>
+      <Notice>
+        사과문 본문만 필수예요. 제출은 답변 작성의 종료를 뜻하며 상대가 사과를
+        받아들였다는 뜻은 아니에요. 실제 전송·저장은 아직 연결되지 않았어요.
+      </Notice>
     </>
   );
 }

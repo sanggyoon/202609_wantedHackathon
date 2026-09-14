@@ -49,7 +49,9 @@ export function PreviewScreen({
           {edit ? "미리보기" : "내용 수정"}
         </Button>
         <Button
-          disabled={Object.values(value).some((v) => !v.trim())}
+          disabled={[value.incident, value.feeling, value.wish].some(
+            (v) => !v.trim(),
+          )}
           onClick={() => onConfirm(value)}
         >
           {side === "A" ? "고소장 접수하기" : "맞고소장 제출하기"}

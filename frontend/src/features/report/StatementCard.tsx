@@ -10,8 +10,8 @@ export function StatementCard({
   const title = data.incident.split(/[.!?。\n]/)[0];
   return (
     <article className={`card side-${side}`}>
-      <h2 className="doc-title">고 소 장</h2>
-      <p className="doc-case">CASE #0241</p>
+      <h2 className="doc-title">{side === "A" ? "고 소 장" : "맞 고 소 장"}</h2>
+      <p className="doc-case">{side}의 관점 · 저장되지 않은 초안</p>
       <h3>사건명</h3>
       <h2>「{title}」</h2>
       <h3>신청인 · 상대방</h3>
@@ -22,13 +22,24 @@ export function StatementCard({
       <p>{data.incident}</p>
       <h3>신청인이 느낀 것</h3>
       <p>{data.feeling}</p>
-      <h3>현재 확인된 핵심 쟁점</h3>
-      <p>
-        중재자(밤톨)가 연결되면, 두 사람이 진짜로 부딪힌 지점을 여기에
-        정리해드릴게요.
+      <p className="notice">
+        작성자의 관점을 담은 내용이며, 상대방의 동의나 사실 확인을 뜻하지
+        않아요.
       </p>
       <h3>원하는 것</h3>
       <p>{data.wish}</p>
+      {data.expectation && (
+        <>
+          <h3>그때 기대했던 점</h3>
+          <p>{data.expectation}</p>
+        </>
+      )}
+      {data.guess && (
+        <>
+          <h3>사실로 확인되지 않은 추측</h3>
+          <p>{data.guess}</p>
+        </>
+      )}
     </article>
   );
 }

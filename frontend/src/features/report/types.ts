@@ -1,4 +1,11 @@
-export type Statement = { incident: string; feeling: string; wish: string };
+export type Statement = {
+  incident: string;
+  feeling: string;
+  wish: string;
+  expectation?: string;
+  guess?: string;
+  sourceMode?: "openai" | "local";
+};
 export type EntryMode = "new" | "invited" | "result";
 export type Apology = {
   understood: string;

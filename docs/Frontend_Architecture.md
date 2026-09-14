@@ -1,5 +1,9 @@
 # 프론트엔드 아키텍처
 
+> 2026-09-14 변경: A/B 진술과 양측 중재 요약에 실제 API를 연결했다.
+> 링크 공유·DB 저장·서버 상태 전이는 미연결이다. 최신 구조와 실행 방법은
+> [A 대화 엔진 연결](./A_Conversation_Integration.md)과 [B 흐름 연결](./B_Respondent_Integration.md)을 따른다.
+
 > 버전: 0.1 · 작성일: 2026-09-10
 > 상태: 프론트엔드 설계 기준 / API 계약과 제품 미정 정책은 후속 확정
 > 근거: [PRD](./PRD.md), [디자인 시스템](./Design_System.md), [기술 ADR](./Tech_ADR.md)
