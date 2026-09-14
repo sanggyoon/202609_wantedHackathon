@@ -81,6 +81,8 @@ small {
 }
 .shell > main {
   flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
 }
 header {
   min-height: 88px;
@@ -185,6 +187,12 @@ footer {
   color: var(--muted);
   padding: 40px 8px calc(24px + env(safe-area-inset-bottom));
 }
+/* 채팅 UI(진술 화면)에서는 하단 안내 영역을 완전히 숨겨, 입력창이 카카오톡처럼
+   화면 맨 아래에 붙고 모바일 키보드가 열릴 때 그대로 밀려 올라가게 한다. */
+body.chat-open footer,
+body.chat-open .screen > .notice {
+  display: none;
+}
 .review {
   margin-top: 16px;
   border: 1px dashed #aaaab4;
@@ -210,7 +218,26 @@ footer {
   padding: 32px 0;
   display: flex;
   flex-direction: column;
+  flex: 1;
   gap: 24px;
+}
+.chat-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 8px;
+  padding: 24px 8px;
+}
+.chat-empty-title {
+  font-size: 20px;
+  font-weight: 700;
+}
+.chat-empty-desc {
+  font-size: 13px;
+  color: var(--muted);
 }
 .heading {
   display: flex;
@@ -382,16 +409,16 @@ select:focus {
   background: var(--primary);
 }
 .chat {
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 24px;
 }
 .assistant {
-  background: white;
-  border: 1px solid var(--border);
-  padding: 16px;
-  border-radius: 0 20px 20px 20px;
-  max-width: 90%;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  max-width: 100%;
 }
 .reply {
   margin: 16px 0 0 auto;
@@ -400,8 +427,11 @@ select:focus {
 }
 .reply p {
   text-align: left;
-  background: var(--primary);
-  color: white;
+  background: #f0efee;
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.5;
   padding: 16px;
   border-radius: 20px 0 20px 20px;
 }
@@ -412,26 +442,55 @@ select:focus {
   padding: 8px;
 }
 .composer {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  background: #ffffff;
+  border: 2px solid #f8f8f8;
+  padding: 8px;
+  border-radius: 28px;
+  padding-bottom: calc(8px + env(safe-area-inset-bottom));
+}
+/* 채팅 UI의 입력창은 화면 맨 아래에 고정한다. 모바일에서는 키보드가 열리면
+   sticky 특성상 자연스럽게 키보드 위로 밀려 올라간다. */
+.composer {
+  position: sticky;
+  bottom: 0;
+  z-index: 100;
+  box-shadow: 0 -8px 16px #f5f4f2;
+}
+.composer textarea {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  border-radius: 0;
+  resize: none;
+  max-height: 120px;
+  padding: 12px 14px;
+}
+.composer textarea:focus {
+  outline: none;
+}
+.composer .send {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  border: none;
+  background: var(--primary);
+  color: white;
+  font-size: 18px;
+  line-height: 1;
   display: grid;
-  gap: 12px;
-  background: #f6f5f3;
-  border: 1px solid var(--border);
-  padding: 16px;
-  border-radius: 24px;
-  padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  place-items: center;
 }
-/* 모바일(앱)에서만 입력창을 하단에 고정한다. 태블릿·데스크탑은 자연스러운 스크롤 유지. */
-@media (max-width: 767px) {
-  .composer {
-    position: sticky;
-    bottom: 0;
-    z-index: 100;
-    box-shadow: 0 -8px 16px #f5f4f2;
-  }
+.composer .send:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
-.composer label {
-  font-size: 14px;
-  font-weight: 600;
+.composer .send:hover:not(:disabled) {
+  opacity: 0.85;
 }
 .report-grid {
   display: grid;
