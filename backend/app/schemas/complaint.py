@@ -61,12 +61,24 @@ class ComplaintAIExtracted(BaseModel):
     optional: ComplaintOptionalInfo = Field(default_factory=ComplaintOptionalInfo)
 
 
+class SharedStatement(BaseModel):
+    """Finalized, share-selected card, never private conversation."""
+
+    incident: str = Field(min_length=1, max_length=8000)
+    feeling: str = Field(min_length=1, max_length=8000)
+    wish: str = Field(min_length=1, max_length=8000)
+    expectation: str = Field(default="", max_length=8000)
+    guess: str = Field(default="", max_length=8000)
+
+
 class ComplaintConversationRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     conversation_id: str = Field(default="temp", alias="conversationId")
     message: str
     state: ComplaintConversationState | None = None
+    side: Literal["A", "B"] = "A"
+    shared_statement: SharedStatement | None = Field(default=None, alias="sharedStatement")
 
 
 class ComplaintConversationResponse(BaseModel):
