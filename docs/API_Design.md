@@ -2,6 +2,8 @@
 
 > 프로젝트: 문철빵 · 최초 작성: 2026-09-14 · 최종 수정: 2026-09-14 · 상태: 구현 반영
 >
+> 카드 형태는 **DB 기준으로 통일**하기로 결정됨 (§8-1).
+>
 > 근거 문서: `docs/PRD.md` §8·§10·§14, `docs/Data_Flow.md` v0.2 (이하 **DFD**),
 > `docs/Supabase_Schema_Design.md`, `docs/Frontend_Architecture.md` §9
 >
@@ -55,8 +57,13 @@ backend/app/
 | 사과 제출 | **미구현** — §6 |
 
 **백엔드에 DB 접근 코드가 전혀 없다.** `config.py`에 `database_url`·`supabase_*` 값이
-선언돼 있으나 어떤 모듈도 사용하지 않는다. 즉 §7에서 적용한 Supabase 스키마는 아직
-백엔드와 연결되지 않았고, 현재 API는 **사건을 식별하지도 저장하지도 않는다.**
+선언돼 있으나 어떤 모듈도 사용하지 않는다. 적용된 Supabase 스키마는 아직 백엔드와
+연결되지 않았고, 현재 API는 **사건을 식별하지도 저장하지도 않는다.**
+
+프론트는 이미 두 엔드포인트에 연결돼 있다. `Frontend_Architecture.md` §9가 요구한
+어댑터 계층이 `frontend/src/lib/api/{conversation,mediation}.ts`로 존재하고,
+`useConversation.ts`와 `MediationSummary.tsx`가 이를 통해 호출한다. 화면 컴포넌트가
+직접 `fetch`를 쓰지 않는다는 규칙이 지켜지고 있다.
 
 ---
 
@@ -349,20 +356,73 @@ DFD §7.3의 **접근 시점 검사(lazy)** 이며, `pg_cron` 배치가 최대 1
 문서를 구현에 맞추는 과정에서 드러난 항목이다. 코드 수정이 필요한 것과 문서만 고치면 되는
 것을 구분한다.
 
-### 8-1. 카드 형태가 DB 스키마와 다르다 — **코드/스키마 결정 필요**
+### 8-1. 카드 형태 통일 — **DB 기준으로 결정됨 (2026-09-14)**
 
-| | 필드 |
+API·프론트·DB가 같은 카드를 서로 다른 필드로 표현하고 있었다. **DB 스키마를 기준으로
+통일한다.** `statement_cards` 컬럼명이 API 응답과 프론트 타입의 이름이 된다.
+
+DB를 기준으로 삼는 이유는 두 가지다. PRD §11 데이터 구조 초안에서 온 형태라 제품 기획에
+가장 가깝고, `cute_charge`(귀여운 죄명)처럼 **제품의 핵심 재미 요소가 DB에만** 있다.
+
+#### 기준 형태
+
+| 필드 | 타입 | 출처 |
+| --- | --- | --- |
+| `cute_charge` | string | **신규** — AI가 생성해야 함 |
+| `incident_summary` | string | **신규** — AI가 생성해야 함 |
+| `incident_description` | string | 현 `incident` |
+| `emotions` | string[] | 대화 상태의 `emotion.emotions` — **현재 카드에서 유실되고 있음** |
+| `emotion_reason` | string | 현 `feeling` |
+| `different_viewpoint` | string \| null | **신규** — AI가 생성해야 함 |
+| `desired_outcome` | string | 현 `wish` |
+| `expected_behavior` | string \| null | 현 `expectation` — **DB에 컬럼 추가 필요** |
+| `assumption` | string \| null | 현 `guess` — **DB에 컬럼 추가 필요** |
+
+#### "DB 기준"이 컬럼 추가를 포함하는 이유
+
+`expectation`·`guess`를 단순히 버릴 수 없다. 프론트의 **공유 항목 선택 화면**
+(`ShareSelectScreen.tsx`)이 사용자에게 이 둘을 공유할지 고르게 하고,
+`StatementCard.tsx`가 카드에 표시한다. 제품 기능이 이미 붙어 있다.
+
+따라서 DB 기준이란 **"DB가 이름과 구조의 권위를 갖되, 프론트에만 있던 항목은 마이그레이션으로
+DB에 흡수한다"** 는 뜻이다. 이름만 바꾸는 작업이 아니다.
+
+#### `feeling`이 두 필드로 갈라진다
+
+대화 상태(`ComplaintConversationState.emotion`)는 이미 `{emotions[], reason}`으로
+DB와 정확히 같은 모양이다. 이를 카드로 옮기는 `SharedStatement`가 `feeling` 한 덩어리로
+납작하게 만들면서 **감정 목록이 통째로 버려지고 있었다.** 기준 형태로 옮기면 이 유실이
+자동으로 해소된다.
+
+#### 사과문도 같은 문제가 있다
+
+| 프론트 `Apology` | DB `apologies` |
 | --- | --- |
-| API `SharedStatement` | `incident`, `feeling`, `wish`, `expectation`, `guess` |
-| DB `statement_cards` | `cute_charge`, `incident_summary`, `incident_description`, `emotions[]`, `emotion_reason`, `different_viewpoint`, `desired_outcome` |
-| 프론트 `types.ts` `Statement` | `incident`, `feeling`, `wish` |
+| `body` | `body` |
+| `understood` | `understood_point` |
+| `promise` | `future_commitment` |
+| `admitted` | **없음 — 컬럼 추가 필요** |
 
-**API는 프론트 목업 타입을 따랐고 DB 스키마를 따르지 않았다.** 현재는 저장 계층이 없어
-문제가 드러나지 않지만, §6을 구현하는 순간 변환이 필요하다.
+`admitted_point`로 추가한다.
 
-셋 중 어느 쪽으로 맞출지는 결정 사항이다. DB 쪽이 PRD §11 데이터 구조 초안에서 왔고
-`cute_charge`(귀여운 죄명) 같은 제품 핵심 필드를 담고 있으므로, **API·프론트를 DB 쪽으로
-확장하는 방향**이 자연스러워 보이나 프론트 변경 범위가 크다.
+#### 필요한 마이그레이션
+
+```sql
+-- supabase/migrations/<타임스탬프>_align_card_fields.sql
+alter table statement_cards add column expected_behavior text;
+alter table statement_cards add column assumption text;
+alter table apologies      add column admitted_point text;
+```
+
+세 컬럼 모두 nullable이고 기존 행이 없어 백필이 필요 없다. §11의 `writer_token_hash`와
+한 파일로 묶어도 된다.
+
+#### 아직 만들지 못하는 세 필드
+
+`cute_charge`·`incident_summary`·`different_viewpoint`는 **어디에서도 생성되지 않는다.**
+`complaint_engine`이 추출하는 항목에 없다. 카드를 저장하려면 대화 엔진이 이 셋을 만들도록
+확장해야 한다. 그때까지는 `cute_charge`·`incident_summary`를 nullable로 두거나 저장
+시점에 별도 LLM 호출로 생성하는 방식 중 하나를 택해야 한다 — §10-2.
 
 ### 8-2. 네이밍 규칙이 엔드포인트마다 다르다 — **코드 수정 권장**
 
@@ -424,15 +484,20 @@ DFD §9의 검수 항목 중 **구현이 책임지는 것**들이다. 상당수�
 | # | 항목 | 정해야 할 시점 |
 | --- | --- | --- |
 | 1 | 접근 로그의 `public_token` 마스킹 (Nginx `log_format`) | §6 구현 후 배포 전 |
-| 2 | 카드 형태 통일 방향 (§8-1) | §6 착수 전 — **가장 시급** |
+| 2 | `cute_charge`·`incident_summary`·`different_viewpoint`를 누가 생성할지 (§8-1) | 카드 저장 구현 전 |
 | 3 | 오류 응답 형식 통일 (§8-3) | §6 착수 전 |
 | 4 | 네이밍 규칙 통일 (§8-2) | 가능하면 프론트 연결 전 |
 | 5 | 동기 응답이 Nginx·브라우저 타임아웃 안에 드는지 실측 | 맞고소 경로 연결 시 |
 | 6 | 위험 내용 감지 기준과 응답 (PRD §14) | 안전 검증 단계 |
 | 7 | 사건당 대화 턴 수 상한 (LLM 비용 방어) | 비용 추이를 보고 |
 | 8 | 백엔드 DB 접근 계층 선택 | §6 착수 시 |
+| 9 | 배포 환경변수 배선 — `docker-compose.yml`에 `DATABASE_URL`·`OPENAI_API_KEY`가 없음 | §6 배포 전 |
 
-2번이 가장 시급하다. §6을 먼저 만들고 나면 API·프론트·DB 세 곳을 동시에 고쳐야 한다.
+**해소됨.** 카드 형태 통일 방향 → DB 기준 (§8-1, 2026-09-14).
+
+9번은 이번 조사에서 드러난 것이다. 배포된 백엔드에 `OPENAI_API_KEY`가 전달되지 않아
+**운영 환경의 AI 대화가 규칙 기반 폴백(`mode: "local"`)으로 동작하고 있다.** DB 접속 코드를
+추가해도 `DATABASE_URL`이 없으면 같은 문제를 겪는다.
 
 5번은 A-2(동기)의 유일한 실질 위험이다. OpenAI 타임아웃이 25초이고 맞고소 경로는 호출이
 2회이므로 최악 50초가 나올 수 있다. Nginx 기본 `proxy_read_timeout`은 60초라 아슬아슬하다.
@@ -454,27 +519,31 @@ PRD §18에 맞춘다. 2·4단계는 이미 끝났고, 남은 것은 사건 계�
 | --- | --- | --- |
 | 2 | A의 고소장 생성 대화 | **구현됨** (§4) |
 | 4 | 맞고소 중재 리포트 | **구현됨** (§5) |
-| 1 | 사건·단일 링크 기반 — `writer_token` 마이그레이션, `POST /api/cases`, `GET /api/cases/{token}`, 만료 lazy 검사 | 미구현 |
+| 0 | **카드 형태 통일** — 마이그레이션, `SharedStatement` 재정의, 프론트 타입·화면 수정 | 미착수 (§8-1) |
+| 1 | 사건·단일 링크 기반 — `POST /api/cases`, `GET /api/cases/{token}`, 만료 lazy 검사 | 미구현 |
 | 3 | B의 응답 분기 — `response-type` | 미구현 |
 | 5 | 사과 종결 — `apology` | 미구현 |
 | 6 | 안전·품질 검증 | 부분 (§9) |
 
-**1단계 착수 전에 §10-2(카드 형태)를 먼저 정해야 한다.** 저장 계층이 생기는 순간
-`SharedStatement`와 `statement_cards`를 잇는 변환이 필요해지고, 그때 형태를 바꾸면
-이미 붙은 프론트까지 함께 고쳐야 한다.
+**0단계를 1단계보다 먼저 한다.** 프론트가 이미 두 엔드포인트에 연결돼 있으므로
+(`lib/api/`), 카드 형태를 나중에 바꾸면 저장 계층·API·프론트를 동시에 고쳐야 한다.
+지금은 프론트와 API 두 곳만 손대면 된다.
 
 1단계에서 만료 lazy 검사(§7.3)를 함께 넣는다. 나중에 붙이면 모든 조회 경로를 다시 훑어야
 한다.
 
 ### 선행 마이그레이션
 
-A-3을 구현하려면 `cases`에 컬럼이 하나 필요하다.
+A-3(쓰기 토큰)과 §8-1(카드 형태 통일)에 필요한 컬럼을 한 파일로 묶는다.
 
 ```sql
--- supabase/migrations/<타임스탬프>_add_writer_token.sql
-alter table cases add column writer_token_hash text;
+-- supabase/migrations/<타임스탬프>_align_api_schema.sql
+alter table cases           add column writer_token_hash text;
+alter table statement_cards add column expected_behavior text;
+alter table statement_cards add column assumption       text;
+alter table apologies       add column admitted_point    text;
 ```
 
-기존 행이 없어 nullable로 추가하면 되고 백필도 불필요하다. 적용은
+네 컬럼 모두 nullable이고 기존 행이 없어 백필이 불필요하다. 적용은
 `Supabase_Schema_Design.md` §8 절차를 따른다 — **머지만으로는 반영되지 않으며
 `supabase db push`가 필요하다**(`Tech_ADR.md` §10).
