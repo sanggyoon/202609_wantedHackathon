@@ -4,7 +4,10 @@ export function StatementSummary({ data }: { data: Statement }) {
   const title = data.incident.split(/[.!?。\n]/)[0];
   return (
     <section className="panel">
-      <span className="badge">고소장 요약 · CASE #0241</span>
+      <span className="badge">고소장 요약 · 신청인의 관점</span>
+      {!data.sourceMode && (
+        <p className="notice">현재는 화면 체험용 예시 사건입니다.</p>
+      )}
       <h3>사건 요약</h3>
       <p>{title}</p>
       <h3>신청인이 느낀 것</h3>

@@ -8,6 +8,7 @@ import { ConversationScreen } from "@/features/conversation/ConversationScreen";
 import { StatementCard } from "@/features/report/StatementCard";
 import { PreviewScreen } from "@/features/report/PreviewScreen";
 import { ApologyScreen } from "@/features/report/ApologyScreen";
+import { MediationSummary } from "@/features/report/MediationSummary";
 import type { Statement, Apology } from "@/features/report/types";
 const screens = [
   "사건 접수",
@@ -35,12 +36,10 @@ export function CaseController({
   initialA,
   initialB,
   initialApology,
-  questions,
 }: {
   initialA: Statement;
   initialB: Statement;
   initialApology: Apology;
-  questions: Record<"A" | "B", string[]>;
 }) {
   const [screen, setScreen] = useState<Screen>("사건 접수");
   const [a, setA] = useState(initialA);
@@ -69,7 +68,7 @@ export function CaseController({
           <ConversationScreen
             key={side}
             side={side}
-            questions={questions[side]}
+            sharedStatement={side === "B" ? a : undefined}
             onComplete={(v) => {
               if (side === "A") setA(v);
               else setB(v);
@@ -186,27 +185,7 @@ export function CaseController({
             <StatementCard side="A" data={a} />
             <StatementCard side="B" data={b} />
           </div>
-          <div className="panel">
-            <span className="badge">🤝 중재자의 정리 (판결 아님)</span>
-            <h2>두 사람을 위한, 중재자의 정리</h2>
-            <Notice>
-              중재자(밤톨) 미연결 상태예요. 아래 정리 영역은 자리 표시자입니다.
-            </Notice>
-            <h3>함께 인정하는 내용</h3>
-            <p>두 이야기에서 확인한 공통점이 표시될 자리</p>
-            <h3>다르게 생각하는 내용</h3>
-            <p>기억과 기대의 차이가 표시될 자리</p>
-            <h3>각자가 서운했던 점</h3>
-            <p>신청인(A): {a.feeling}</p>
-            <p>상대방(B): {b.feeling}</p>
-            <h3>오해가 생긴 지점</h3>
-            <p>단정하지 않은 오해 가능성이 표시될 자리</p>
-            <h3>중재자의 추천 방안</h3>
-            <p>
-              중재자(밤톨)가 연결되면, 두 사람이 다시 가까워질 수 있는 작은
-              해결책을 여기에 제안해드릴게요.
-            </p>
-          </div>
+          <MediationSummary a={a} b={b} />
         </>
       );
       break;
@@ -257,16 +236,14 @@ export function CaseController({
           </article>
           <section className="panel">
             <h2>사건 종결</h2>
-            <h3>사과한 행동 또는 상황</h3>
             <p>
-              중재자(밤톨) 연결 후, 화해서에 직접 담긴 내용만 요약해드릴
-              자리예요.
+              B의 사과문 작성이 끝났어요. 위 카드에는 직접 적은 내용만 담았고,
+              AI가 사과나 약속을 추가하지 않았어요.
             </p>
-            <h3>사과를 받은 당신에게 · 밤톨의 추천</h3>
-            <p>
-              중재자(밤톨)가 연결되면, 사과를 받은 지금 어떤 말이나 행동을
-              건네면 두 사람이 더 편안해질지 살며시 추천해드릴게요.
-            </p>
+            <Notice>
+              현재 브라우저 안의 체험 결과예요. 실제 상대에게 전송되거나 DB에
+              저장되지는 않았어요.
+            </Notice>
           </section>
           <Notice>
             ‘화해 성립’은 답변이 끝났다는 뜻이에요. 사과를 꼭 받아들여야 한다는
@@ -397,7 +374,7 @@ export function CaseController({
             <option key={s}>{s}</option>
           ))}
         </select>
-        <small>A 진술은 대화 API · 나머지는 가상 사건</small>
+        <small>A/B 대화·중재 AI 연결 · 링크·DB 저장 미연결</small>
       </aside>
       <div key={screen} className="screen">
         {content}

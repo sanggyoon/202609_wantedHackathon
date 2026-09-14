@@ -2,12 +2,16 @@
 import { useEffect, useRef, useState } from "react";
 import { sendConversation } from "@/lib/api/conversation";
 import type { ConversationResponse, ConversationState } from "./types";
+import type { Statement } from "@/features/report/types";
 type Turn = {
   text: string;
   response: ConversationResponse;
   before: ConversationState | null;
 };
-export function useConversation() {
+export function useConversation(
+  side: "A" | "B" = "A",
+  sharedStatement?: Statement,
+) {
   const [turns, setTurns] = useState<Turn[]>([]);
   const [input, setInput] = useState("");
   const [editing, setEditing] = useState<number | null>(null);
@@ -22,7 +26,12 @@ export function useConversation() {
   );
   const latest = turns.at(-1)?.response;
   async function send() {
-    if (!input.trim() || active.current) return;
+    if (
+      !input.trim() ||
+      active.current ||
+      (latest?.state.readyToGenerate && editing === null)
+    )
+      return;
     const controller = new AbortController();
     active.current = controller;
     const timeout = setTimeout(() => controller.abort(), 65000);
@@ -35,6 +44,8 @@ export function useConversation() {
         input.trim(),
         before,
         controller.signal,
+        side,
+        sharedStatement,
       );
       if (controller.signal.aborted) return;
       setTurns([

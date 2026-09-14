@@ -1,3 +1,4 @@
+import type { Statement } from "@/features/report/types";
 import type {
   ConversationResponse,
   ConversationState,
@@ -6,12 +7,19 @@ export async function sendConversation(
   message: string,
   state: ConversationState | null,
   signal: AbortSignal,
+  side: "A" | "B" = "A",
+  sharedStatement?: Statement,
 ): Promise<ConversationResponse> {
   const response = await fetch("/api/complaint/conversation/message", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     cache: "no-store",
-    body: JSON.stringify({ message, state }),
+    body: JSON.stringify({
+      message,
+      state,
+      side,
+      sharedStatement: side === "B" ? sharedStatement : undefined,
+    }),
     signal,
   });
   if (!response.ok)
