@@ -11,7 +11,7 @@
 
 | 이름 | Hex | 용도 |
 |------|-----|------|
-| Primary | `#1B1B32` | 주요 브랜드 컬러, CTA, 강조 |
+| Primary | `#0E5748` | 주요 브랜드 컬러, CTA, 강조 |
 | White | `#FFFFFF` | 역전 텍스트, 카드 배경 등 |
 
 ### 배경색 (Background)
@@ -44,10 +44,10 @@ background: linear-gradient(-7deg, #FAFAFA 26%, #F0EFEE 84%);
 | 이름 | Hex | 용도 |
 |------|-----|------|
 | Text-Primary | `#28272A` | 제목, 주요 본문 (최강조 포함) |
-| Text-Secondary | `#646468` | 부제목, 보조 정보 |
-| Text-Tertiary | `#9D9D9F` | 캡션, 레이블 |
-| Text-Disabled | `#CBCBCD` | 비활성 텍스트 |
-| Text-Placeholder | `#DFDFE1` | 플레이스홀더, 최소 강조 |
+| Text-Secondary | `#5A5A5E` | 부제목, 보조 정보 |
+| Text-Tertiary | `#868688` | 캡션, 레이블 |
+| Text-Disabled | `#ACACAF` | 비활성 텍스트 |
+| Text-Placeholder | `#D8D8DA` | 플레이스홀더, 최소 강조 |
 
 ---
 

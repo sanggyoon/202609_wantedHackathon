@@ -8,7 +8,8 @@ import { ConversationScreen } from "@/features/conversation/ConversationScreen";
 import { StatementCard } from "@/features/report/StatementCard";
 import { PreviewScreen } from "@/features/report/PreviewScreen";
 import { ApologyScreen } from "@/features/report/ApologyScreen";
-import type { Statement, Apology } from "@/features/report/types";
+import type { Statement, Apology, EntryMode } from "@/features/report/types";
+const entryModes = ["new", "invited", "result"] as const;
 const screens = [
   "사건 접수",
   "원고 진술",
@@ -36,13 +37,16 @@ export function CaseController({
   initialB,
   initialApology,
   questions,
+  initialEntryMode = "new",
 }: {
   initialA: Statement;
   initialB: Statement;
   initialApology: Apology;
   questions: Record<"A" | "B", string[]>;
+  initialEntryMode?: EntryMode;
 }) {
   const [screen, setScreen] = useState<Screen>("사건 접수");
+  const [entryMode, setEntryMode] = useState<EntryMode>(initialEntryMode);
   const [a, setA] = useState(initialA);
   const [b, setB] = useState(initialB);
   const [apology, setApology] = useState(initialApology);
@@ -51,11 +55,14 @@ export function CaseController({
     case "사건 접수":
       content = (
         <StartScreen
+          entryMode={entryMode}
           onStart={() => {
             setA(initialA);
             setB(initialB);
             setApology(initialApology);
-            setScreen("원고 진술");
+            if (entryMode === "new") setScreen("원고 진술");
+            else if (entryMode === "invited") setScreen("소환장 도착");
+            else setScreen("화해 성립");
           }}
         />
       );
@@ -364,6 +371,23 @@ export function CaseController({
   return (
     <>
       <aside className="review">
+        <label>시작화면 바로가기 (개발용)</label>
+        <div className="actions">
+          {entryModes.map((m, i) => (
+            <Button
+              key={m}
+              secondary={entryMode !== m}
+              onClick={() => {
+                setEntryMode(m);
+                setScreen("사건 접수");
+              }}
+            >
+              {`시작화면 ${i + 1}`}
+              <br />
+              {{ new: "A 최초 진입", invited: "B 소환장 링크 진입", result: "완료 후 재진입" }[m]}
+            </Button>
+          ))}
+        </div>
         <label htmlFor="screen">사건 기록 열람</label>
         <select
           id="screen"

@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button, Heading, Notice } from "@/components/ui";
 import type { Statement } from "@/features/report/types";
 export function ConversationScreen({
@@ -14,41 +14,58 @@ export function ConversationScreen({
   const [answers, setAnswers] = useState<string[]>([]);
   const [input, setInput] = useState("");
   const [edit, setEdit] = useState<number | null>(null);
+  useEffect(() => {
+    document.body.classList.add("chat-open");
+    return () => document.body.classList.remove("chat-open");
+  }, []);
+  useEffect(() => {
+    window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+  }, [answers.length, edit]);
+  const isEmpty = answers.length === 0 && edit === null;
   return (
     <>
-      <Heading
-        label={`${side === "A" ? "원고 진술" : "피고 진술"} · ${Math.min(
-          answers.length + 1,
-          3,
-        )} / 3`}
-        title={
-          side === "A"
-            ? "무슨 일을 고소하고 싶으신가요?"
-            : "이번엔 당신의 이야기를 들려주세요."
-        }
-      >
-        그날의 이야기, 저에게 편히 들려주세요.
-      </Heading>
-      <div className="chat">
-        {questions.slice(0, Math.min(answers.length + 1, 3)).map((q, i) => (
-          <div key={q}>
-            <p className="assistant">🌰　{q}</p>
-            {answers[i] && (
-              <div className="reply">
-                <p>{answers[i]}</p>
-                <button
-                  onClick={() => {
-                    setEdit(i);
-                    setInput(answers[i]);
-                  }}
-                >
-                  진술 수정
-                </button>
+      {isEmpty ? (
+        <div className="chat-empty">
+          <p className="chat-empty-title">무슨 일이 있었나요?</p>
+          <p className="chat-empty-desc">떠오르는 대로 편하게 들려주세요</p>
+        </div>
+      ) : (
+        <>
+          <Heading
+            label={`${side === "A" ? "원고 진술" : "피고 진술"} · ${Math.min(
+              answers.length + 1,
+              3,
+            )} / 3`}
+            title={
+              side === "A"
+                ? "무슨 일을 고소하고 싶으신가요?"
+                : "이번엔 당신의 이야기를 들려주세요."
+            }
+          >
+            그날의 이야기, 저에게 편히 들려주세요.
+          </Heading>
+          <div className="chat">
+            {questions.slice(0, Math.min(answers.length + 1, 3)).map((q, i) => (
+              <div key={q}>
+                {i > 0 && <p className="assistant">{q}</p>}
+                {answers[i] && (
+                  <div className="reply">
+                    <p>{answers[i]}</p>
+                    <button
+                      onClick={() => {
+                        setEdit(i);
+                        setInput(answers[i]);
+                      }}
+                    >
+                      진술 수정
+                    </button>
+                  </div>
+                )}
               </div>
-            )}
+            ))}
           </div>
-        ))}
-      </div>
+        </>
+      )}
       {answers.length < 3 || edit !== null ? (
         <form
           className="composer"
@@ -64,17 +81,28 @@ export function ConversationScreen({
             setEdit(null);
           }}
         >
-          <label htmlFor="answer">{edit === null ? "내 진술" : "진술 수정"}</label>
           <textarea
             id="answer"
-            rows={3}
+            aria-label={edit === null ? "내 진술" : "진술 수정"}
+            rows={1}
             value={input}
             onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                e.currentTarget.form?.requestSubmit();
+              }
+            }}
             placeholder="중재자 밤톨에게 편하게 말해보세요."
           />
-          <Button type="submit" disabled={!input.trim()}>
-            진술하기 ↑
-          </Button>
+          <button
+            type="submit"
+            className="send"
+            disabled={!input.trim()}
+            aria-label="진술하기"
+          >
+            ↑
+          </button>
         </form>
       ) : (
         <Button
