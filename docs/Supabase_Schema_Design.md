@@ -298,11 +298,33 @@ DFD §7.3의 "접근 시점 검사 + 배치 삭제 병행" 권장안이다.
 
 ## 7. 마이그레이션 파일 구성
 
-| 순서 | 파일 | 내용 |
-|---|---|---|
-| 1 | `20260910124408_init.sql` (기존) | `pgcrypto` 확장 |
-| 2 | `20260912113000_case_schema.sql` | §4 열거형·테이블·인덱스, §5 RLS |
-| 3 | `20260912113100_expiry_purge.sql` | §6 pg_cron·함수·스케줄 |
+| 순서 | 파일 | 내용 | 상태 |
+|---|---|---|---|
+| 1 | `20260910124408_init.sql` | `pgcrypto` 확장 | 적용됨 |
+| 2 | `20260912113000_case_schema.sql` | §4 열거형·테이블·인덱스, §5 RLS | 적용됨 |
+| 3 | `20260912113100_expiry_purge.sql` | §6 pg_cron·함수·스케줄 | 적용됨 |
+| 4 | `<타임스탬프>_align_api_schema.sql` | API 연결에 필요한 컬럼 4개 (아래) | **예정** |
+
+### 4번 — API 연결에 필요한 컬럼 (2026-09-14 결정)
+
+```sql
+alter table cases           add column writer_token_hash text;
+alter table statement_cards add column expected_behavior text;
+alter table statement_cards add column assumption        text;
+alter table apologies       add column admitted_point     text;
+```
+
+`writer_token_hash`는 A의 쓰기 권한 검증에 쓴다(`docs/API_Design.md` §6.1).
+
+나머지 셋은 **프론트에 이미 구현된 기능이 DB에 담길 곳이 없어서** 추가한다. 공유 항목
+선택 화면(`ShareSelectScreen.tsx`)이 사용자에게 "기대했던 행동"·"추측"을 공유할지 고르게
+하고, 사과문 화면은 "인정한 점"을 받는다. 카드 형태를 DB 기준으로 통일하기로 하면서
+(`docs/API_Design.md` §8-1) 이 셋을 DB가 흡수한다.
+
+넷 다 nullable이고 기존 행이 없어 백필이 불필요하다.
+
+**PRD §11 데이터 구조 초안에는 없던 필드다.** 초안 이후 프론트에서 늘어난 기능이므로
+PRD도 함께 갱신하는 것이 맞다.
 
 **2와 3을 분리한 이유:** `pg_cron` 활성화가 설치 스키마 제약으로 실패할 여지가 있다고
 보아, 3이 깨져도 2는 적용된 상태로 남도록 나눴다. 실제 적용에서는 **3도 문제없이 통과**해
