@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 ComplaintMissingField = Literal[
     "incident",
@@ -85,6 +85,24 @@ class SharedStatement(BaseModel):
     desired_outcome: str = Field(min_length=1, max_length=8000)
     expected_behavior: str = Field(default="", max_length=8000)
     assumption: str = Field(default="", max_length=8000)
+
+    @field_validator(
+        "cute_charge",
+        "incident_summary",
+        "emotion_reason",
+        "hurt_point",
+        "expected_behavior",
+        "assumption",
+        mode="before",
+    )
+    @classmethod
+    def _null_is_empty(cls, value: object) -> object:
+        """DB의 NULL을 빈 문자열로 받는다.
+
+        해당 컬럼들은 nullable이므로 저장된 카드를 읽으면 None이 온다.
+        "값 없음"을 빈 문자열 하나로 통일해 프론트가 분기를 두 벌 두지 않게 한다.
+        """
+        return "" if value is None else value
 
     def shared(self, value: str) -> bool:
         """공유하지 않기로 한 항목과 빈 값을 함께 걸러낸다."""

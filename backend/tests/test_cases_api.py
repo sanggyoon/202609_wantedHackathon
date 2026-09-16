@@ -130,6 +130,33 @@ class ReadCaseTest(unittest.TestCase):
         response = self.get(make_case())
         self.assertEqual(response.headers["Cache-Control"], "no-store")
 
+    def test_nullable_columns_come_back_as_empty_strings(self):
+        # hurt_point·expected_behavior·assumption 컬럼은 nullable이다.
+        # 저장된 카드를 읽으면 None이 오는데, 그대로 두면 조회가 500으로 깨진다.
+        card = {
+            "cute_charge": None,
+            "incident_summary": None,
+            "incident_description": "늦었다",
+            "emotions": ["서운함"],
+            "emotion_reason": None,
+            "hurt_point": None,
+            "different_viewpoint": None,
+            "desired_outcome": "연락",
+            "expected_behavior": None,
+            "assumption": None,
+        }
+        response = self.get(
+            make_case(),
+            content={"cards": {"A": card}, "report": None, "apology": None},
+        )
+        self.assertEqual(response.status_code, 200)
+        got = response.json()["content"]["cards"]["A"]
+        for key in ("cute_charge", "emotion_reason", "hurt_point",
+                    "expected_behavior", "assumption"):
+            self.assertEqual(got[key], "", key)
+        # different_viewpoint만은 null을 유지한다 — "아직 없음"과 "빈 값"이 다르다.
+        self.assertIsNone(got["different_viewpoint"])
+
 
 class AvailableActionsTest(unittest.TestCase):
     def get_actions(self, status, as_writer):
