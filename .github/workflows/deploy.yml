@@ -65,7 +65,20 @@ jobs:
             set -e
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             cd ~/services/202609_wantedHackathon
+
+            # 서버는 main의 거울이다. docker-compose.yml 같은 추적 파일을 서버에서
+            # 직접 고쳐두면 레포와 조용히 어긋나므로 버린다. 환경 차이는 .env로만
+            # 표현한다 — .gitignore 대상이라 reset이 건드리지 않는다.
+            git fetch origin main
+            git reset --hard origin/main
+
             export IMAGE_TAG=${{ needs.build-and-push.outputs.image_tag }}
+
+            # up -d 만으로는 이미지가 갱신되지 않는다. pull을 빼면 서버에 있던
+            # 옛 :latest 가 그대로 떠서, 배포는 성공했는데 옛 코드가 도는 사고가 난다.
             docker compose pull
             docker compose up -d
             docker image prune -f
+
+            # 실제로 뜬 이미지를 로그에 남긴다. 위 사고를 빨리 발견하기 위함.
+            docker compose ps --format 'table {{.Service}}\t{{.Image}}\t{{.Status}}'
