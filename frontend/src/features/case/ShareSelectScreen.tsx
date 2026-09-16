@@ -39,8 +39,12 @@ export function ShareSelectScreen({
         <p>밤톨이 정리한 내용을 골라, {doc}에 담아볼까요?</p>
       </div>
       <div className="panel">
-        <span className="badge">🌰 밤톨이 정리한 내용</span>
-        <h2>{doc}에 담아 공유하고 싶은 것만 선택해주세요.</h2>
+        <span className="badge">밤톨이 정리한 내용</span>
+        <h2>
+          {doc}에 담아 공유하고 싶은 것만
+          <br />
+          선택해주세요.
+        </h2>
         <ul className="select-list">
           {items.map((item) => (
             <li key={item.key}>
@@ -65,9 +69,14 @@ export function ShareSelectScreen({
           AI 미연결 상태예요. 지금은 예시로 정리한 항목이고, 선택은 체험용입니다.
         </Notice>
       </div>
-      <Button disabled={count === 0} onClick={onComplete}>
-        선택한 내용으로 {doc} 만들기 → ({count})
-      </Button>
+      <div className="cta-float-spacer" aria-hidden="true" />
+      <div className="cta-float">
+        <div className="cta-float-inner">
+          <Button disabled={count === 0} onClick={onComplete}>
+            선택한 내용으로 {doc} 만들기 → ({count})
+          </Button>
+        </div>
+      </div>
     </>
   );
 }

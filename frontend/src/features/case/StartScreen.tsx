@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui";
 import type { EntryMode } from "@/features/report/types";
 
@@ -10,9 +11,9 @@ const copy: Record<
     label: "정말 많은 일이 있었군요.\n저에게 편히 다 말해보세요.",
     title: (
       <>
-        밤톨이 당신의
+        일단 차근차근 얘기해봐요.
         <br />
-        고소를 도와드릴게요.
+        증거는 챙기셨죠?
       </>
     ),
     desc: "로그인 없이 시작 · 실제 법률 서비스가 아니에요",
@@ -44,20 +45,49 @@ const copy: Record<
   },
 };
 
+export type ResultEnding = "apology" | "counterclaim";
+
 export function StartScreen({
   entryMode = "new",
+  resultTab = "apology",
   onStart,
 }: {
   entryMode?: EntryMode;
-  onStart: () => void;
+  resultTab?: ResultEnding;
+  onStart: (ending?: ResultEnding) => void;
 }) {
   const c = copy[entryMode];
   return (
     <>
       <section className="hero">
-        <div className="paper doc" aria-hidden="true">
-          고소장
-        </div>
+        {entryMode === "new" ? (
+          <div className="paper doc-image" aria-hidden="true">
+            <img src="/images/asset1.png" alt="" className="paper-image" />
+          </div>
+        ) : entryMode === "result" ? (
+          resultTab === "apology" ? (
+            <div className="paper doc-image" aria-hidden="true">
+              <img src="/images/apple.png" alt="" className="paper-image" />
+            </div>
+          ) : (
+            <div className="paper-duo-viewport" aria-hidden="true">
+              <motion.div
+                className="paper-duo font-point"
+                drag="x"
+                dragConstraints={{ left: -48, right: 48 }}
+                dragElastic={0.6}
+                dragSnapToOrigin
+              >
+                <div className="doc-half plaintiff">원고</div>
+                <div className="doc-half defendant">피고</div>
+              </motion.div>
+            </div>
+          )
+        ) : (
+          <div className="paper doc font-point" aria-hidden="true">
+            고소장
+          </div>
+        )}
         <small>
           {c.label.split("\n").map((line, i) => (
             <span key={i}>
@@ -67,7 +97,6 @@ export function StartScreen({
           ))}
         </small>
         <h1>{c.title}</h1>
-        <Button onClick={onStart}>{c.cta}</Button>
         <small>{c.desc}</small>
       </section>
       {entryMode === "new" && (
@@ -84,9 +113,19 @@ export function StartScreen({
         </div>
       )}
       <p className="notice">
-        판결문(결과물)은 7일 후 파기돼요. 지금은 저장·공유되지 않는 와이어프레임
-        체험입니다.
+        판결문(결과물)은 <strong>7일 후 파기</strong>돼요. 지금은 저장·공유되지
+        않는 와이어프레임 체험입니다.
       </p>
+      {entryMode !== "result" && (
+        <>
+          <div className="cta-float-spacer" aria-hidden="true" />
+          <div className="cta-float">
+            <div className="cta-float-inner cta-float-inner-auto">
+              <Button onClick={() => onStart()}>{c.cta}</Button>
+            </div>
+          </div>
+        </>
+      )}
     </>
   );
 }
