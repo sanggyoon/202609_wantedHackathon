@@ -303,9 +303,9 @@ DFD §7.3의 "접근 시점 검사 + 배치 삭제 병행" 권장안이다.
 | 1 | `20260910124408_init.sql` | `pgcrypto` 확장 | 적용됨 |
 | 2 | `20260912113000_case_schema.sql` | §4 열거형·테이블·인덱스, §5 RLS | 적용됨 |
 | 3 | `20260912113100_expiry_purge.sql` | §6 pg_cron·함수·스케줄 | 적용됨 |
-| 4 | `20260915101500_align_api_schema.sql` | API 연결에 필요한 컬럼 5개 (아래) | 작성됨, **적용 대기** |
+| 4 | `20260915101500_align_api_schema.sql` | API 연결에 필요한 컬럼 5개 (아래) | 적용됨 |
 
-### 4번 — API 연결에 필요한 컬럼 (2026-09-14 결정)
+### 4번 — API 연결에 필요한 컬럼 (2026-09-14 결정, 09-15 적용)
 
 ```sql
 alter table cases           add column writer_token_hash text;
@@ -367,6 +367,7 @@ SQL 에디터로 프로덕션 스키마를 직접 고치지 않는다. 마이그
 | 날짜 | 내용 |
 | --- | --- |
 | 2026-09-12 | `init.sql`·`case_schema`·`expiry_purge` 3개를 `supabase db push`로 최초 적용. 검증 완료 (§9 참고) |
+| 2026-09-15 | `align_api_schema` 적용 (컬럼 5개). `supabase migration list`로 로컬·원격 버전 일치 확인 |
 
 ---
 

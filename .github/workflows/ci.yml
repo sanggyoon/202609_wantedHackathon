@@ -39,3 +39,9 @@ jobs:
       - run: uv sync --locked
       - run: uv run ruff check .
       - run: uv run python -c "import app.main"
+
+      # tests/에 __init__.py가 없어 tests를 top-level로 두고 PYTHONPATH에 함께 넣는다.
+      # DATABASE_URL 없이 도는 것이 정상이다 — DB 접근은 저장소 계층을 목으로 막는다.
+      - run: uv run python -m unittest discover -s tests -t tests -p 'test_*.py'
+        env:
+          PYTHONPATH: .:tests

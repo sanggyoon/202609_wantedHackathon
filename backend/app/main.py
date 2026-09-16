@@ -3,6 +3,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.api.cases import router as cases_router
 from app.api.conversation import router as conversation_router
 from app.api.health import router as health_router
 from app.api.mediation import router as mediation_router
@@ -23,6 +24,7 @@ app.add_middleware(
 )
 
 app.include_router(health_router, prefix="/api")
+app.include_router(cases_router, prefix="/api")
 app.include_router(conversation_router, prefix="/api")
 app.include_router(mediation_router, prefix="/api")
 
