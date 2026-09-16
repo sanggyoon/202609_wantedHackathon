@@ -2,9 +2,11 @@ import { feelingText, type Statement } from "./types";
 export function StatementCard({
   side,
   data,
+  saved = false,
 }: {
   side: "A" | "B";
   data: Statement;
+  saved?: boolean;
 }) {
   const other = side === "A" ? "B" : "A";
   const title =
@@ -12,7 +14,7 @@ export function StatementCard({
   return (
     <article className={`card side-${side}`}>
       <h2 className="doc-title">{side === "A" ? "고 소 장" : "맞 고 소 장"}</h2>
-      <p className="doc-case">{side}의 관점 · 저장되지 않은 초안</p>
+      <p className="doc-case">{side}의 관점 · {saved ? "저장된 고소장" : "저장되지 않은 초안"}</p>
       <h3>사건명</h3>
       <h2>「{title}」</h2>
       <h3>신청인 · 상대방</h3>

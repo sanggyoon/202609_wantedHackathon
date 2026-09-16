@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CreateCaseButton } from "@/features/case/CreateCaseButton";
 import { AppShell } from "@/components/layout/AppShell";
 export default function Home() {
   return (
@@ -17,10 +18,8 @@ export default function Home() {
           <br />
           고소를 도와드릴게요.
         </h1>
-        <Link className="button" href="/wireframe">
-          시작하기 ↗
-        </Link>
-        <small>와이어프레임 체험 · 가상 사건 기록</small>
+        <CreateCaseButton />
+        <Link href="/wireframe">가상 사건으로 화면 체험하기</Link>
       </section>
       <div className="steps">
         <p>

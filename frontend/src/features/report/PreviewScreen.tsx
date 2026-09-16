@@ -7,10 +7,12 @@ export function PreviewScreen({
   side,
   initial,
   onConfirm,
+  submitDisabled = false,
 }: {
   side: "A" | "B";
   initial: Statement;
   onConfirm: (value: Statement) => void;
+  submitDisabled?: boolean;
 }) {
   const [value, setValue] = useState(initial);
   const [edit, setEdit] = useState(false);
@@ -66,12 +68,12 @@ export function PreviewScreen({
           {edit ? "미리보기" : "내용 수정"}
         </Button>
         <Button
-          disabled={[value.incident_description, value.desired_outcome].some(
+          disabled={submitDisabled || [value.incident_description, value.desired_outcome].some(
             (v) => !v.trim(),
           )}
           onClick={() => onConfirm(value)}
         >
-          {side === "A" ? "고소장 접수하기" : "맞고소장 제출하기"}
+          {submitDisabled ? "고소장 저장 기능 준비 중" : side === "A" ? "고소장 접수하기" : "맞고소장 제출하기"}
         </Button>
       </div>
     </>
