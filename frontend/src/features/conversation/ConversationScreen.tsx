@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button, Heading, Notice } from "@/components/ui";
 import type { Statement } from "@/features/report/types";
 export function ConversationScreen({
@@ -14,6 +14,15 @@ export function ConversationScreen({
   const [answers, setAnswers] = useState<string[]>([]);
   const [input, setInput] = useState("");
   const [edit, setEdit] = useState<number | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    const maxHeight = parseFloat(getComputedStyle(el).maxHeight);
+    el.style.overflowY = el.scrollHeight > maxHeight ? "auto" : "hidden";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [input]);
   useEffect(() => {
     document.body.classList.add("chat-open");
     return () => document.body.classList.remove("chat-open");
@@ -82,6 +91,7 @@ export function ConversationScreen({
           }}
         >
           <textarea
+            ref={textareaRef}
             id="answer"
             aria-label={edit === null ? "내 진술" : "진술 수정"}
             rows={1}
