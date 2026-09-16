@@ -2,7 +2,7 @@
 
 > 상위 문서: `docs/PRD.md` (커플 감정 전달 서비스 기획안)
 >
-> 문서 버전: 0.3 · 최종 수정: 2026-09-14 · 상태: Accepted
+> 문서 버전: 0.4 · 최종 수정: 2026-09-16 · 상태: Accepted
 >
 > 중점 영역: ① AI 대화 원문 비저장 흐름 · ② 단일 링크 상태 전이별 데이터 흐름 · ③ 7일 만료·삭제 흐름
 >
@@ -69,7 +69,7 @@ AI 프롬프트 구체안, 인프라 배포 구조다.
 
 | 엔티티 | 테이블 | 저장 여부 | 비고 |
 | --- | --- | --- | --- |
-| `Case` (사건 메타) | `cases` | 저장 | `id`, `public_token_hash`, `status`, `response_type`, `created_at`, `answered_at`, `expires_at`, `purged_at` |
+| `Case` (사건 메타) | `cases` | 저장 | `id`, `public_token_hash`, `writer_token_hash`, `status`, `response_type`, `created_at`, `answered_at`, `expires_at`, `purged_at` |
 | `StatementCard` (A/B 카드) | `statement_cards` | 저장 | AI가 원문에서 추출·구조화한 **결과물**. 원문은 포함하지 않음 |
 | `Apology` (사과 카드) | `apologies` | 저장 | B가 직접 입력한 텍스트. AI 생성물 아님 |
 | `MediationReport` (중재 요약) | `mediation_reports` | 저장 | AI가 A·B 카드로부터 생성한 결과물 |
@@ -79,6 +79,15 @@ AI 프롬프트 구체안, 인프라 배포 구조다.
 
 `Case`의 `answered_at`·`purged_at`은 PRD §11 초안에 없던 필드다. 각각 만료 기준 시각
 계산(§7.3)과 삭제 완료 증명(§9)을 위해 추가했다.
+
+**토큰이 둘이다.** `public_token`(링크)과 `writer_token`(A의 쓰기 권한). 둘 다 SHA-256
+해시만 저장하고 원문은 사건 생성 응답에서만 나간다. B에게는 쓰기 토큰을 주지 않는다 —
+"링크를 가진 사람이 B"가 전제이며, B의 중복 제출은 토큰이 아니라 상태 조건부 UPDATE와
+DB 제약이 막는다 (§7.2).
+
+`statement_cards`에 `hurt_point`·`expected_behavior`·`assumption`이, `apologies`에
+`admitted_point`가 2026-09-15에 추가됐다. 프론트의 공유 항목 선택 기능이 이미 다루던
+항목인데 담길 곳이 없어 DB가 흡수한 것이다 (`docs/API_Design.md` §8-1).
 
 ---
 
@@ -463,7 +472,7 @@ PRD §17 검수 기준을 데이터 관점 검증 항목으로 매핑한다. "�
 | 원문이 로그·분석에 저장되지 않는다 | 로그 출력·이벤트 페이로드에 원문 미포함 확인 | 구현 |
 | 생성된 결과물만 보관된다 | 영속 테이블이 `cases` + 결과물 3개뿐임을 확인 | **스키마** |
 | 같은 URL이 답변 후에도 안 바뀐다 | `public_token_hash` 불변, `status`만 전이 확인 | **스키마** |
-| 만료 후 내용이 노출되지 않는다 | lazy 검사 + `pg_cron` 삭제 + `purged_at` 기록 확인 | 스키마 + 구현 |
+| 만료 후 내용이 노출되지 않는다 | lazy 검사 **구현됨**(조회·쓰기 모두 410). `pg_cron` 배치는 **실행 이력 미확인** | 스키마 + 구현 |
 | 만료 후 캐시·백업에서도 안 나온다 | 캐시 무효화, 백업 보존주기 내 삭제 확인 | 구현 (§7.3 미결) |
 | 사과문이 그대로 표시된다 | `apologies.body`가 입력 원본과 일치, AI 파생 필드 미주입 | 구현 |
 | 중복 제출 방지 | PK·UNIQUE 제약 + 조건부 UPDATE 동작 확인 | **스키마** |
@@ -497,7 +506,11 @@ v0.1의 미결 8건 중 5건이 확정되었다. 남은 항목은 다음과 같�
 | D1~D4 테이블 정의, 제약, 인덱스 | `supabase/migrations/` (설계 근거는 `docs/Supabase_Schema_Design.md`) |
 | RLS — `service_role` 단독 접근 | 같은 마이그레이션. 브라우저는 Supabase에 직접 붙지 않음 |
 | `purge_expired_cases()` + `pg_cron` 스케줄 | 같은 마이그레이션 |
-| 토큰 해시 생성·검증, lazy 만료 검사, 상태 전이 | `backend/app/` (FastAPI) |
+| 토큰 생성·해시·상수시간 비교 | `backend/app/core/tokens.py` |
+| DB 연결 (지연 생성 풀) | `backend/app/db.py` |
+| 사건 SQL — 여기에만 둔다 | `backend/app/repositories/cases.py` |
+| **lazy 만료 검사** | `backend/app/api/cases.py`의 `_expired()` — 조회·쓰기 양쪽에서 |
+| 상태 전이 (조건부 UPDATE) | `backend/app/repositories/cases.py` |
 | T1 — 원문 임시 보관과 폐기 | `backend/app/` — 실제 구현은 **클라이언트가 구조화 상태를 왕복**시키는 방식이라 서버 메모리에도 남지 않는다 (`docs/API_Design.md` §3) |
 | HTTP 계약 (경로·요청·응답·오류) | `docs/API_Design.md` |
 | 로컬 역할 표식(A/B 판정) | `frontend/src/` 브라우저 저장소 |
@@ -508,6 +521,7 @@ v0.1의 미결 8건 중 5건이 확정되었다. 남은 항목은 다음과 같�
 
 | 버전 | 날짜 | 변경 |
 | --- | --- | --- |
+| 0.4 | 2026-09-16 | §3에 `writer_token_hash`와 09-15 추가 컬럼 4개 반영, 토큰 두 종류 설명 추가. §9에 lazy 검사 구현 완료·`pg_cron` 실행 이력 미확인 표시. §11 구현 매핑을 실제 모듈로 갱신 |
 | 0.3 | 2026-09-14 | §7.1 외부 AI 제공자 경계 해소(OpenAI `store=False`). §10 미결 4건 → 3건. §11에 API 설계 문서 및 T1 실제 구현 방식 반영 |
 | 0.2 | 2026-09-12 | §6 D1 생성 시점 모순 해소(P1 발급 시 생성). §7.1 서버 무저장 확정. §7.2 제출 1회·즉시 잠금·폐기 기능 MVP 제외 확정. §7.3 만료 기준(최종 답변 +7일, 생성 시 초기화)과 pg_cron 확정. §8.3 미답변 만료 경로 추가. §9 보장 주체 열 추가. §11 구현 매핑 추가. 미결 8건 → 4건 |
 | 0.1 | 2026-09-10 | 최초 작성 |
