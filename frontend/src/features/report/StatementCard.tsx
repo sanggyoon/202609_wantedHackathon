@@ -2,15 +2,18 @@ import type { Statement } from "./types";
 export function StatementCard({
   side,
   data,
+  mine = false,
 }: {
   side: "A" | "B";
   data: Statement;
+  mine?: boolean;
 }) {
   const other = side === "A" ? "B" : "A";
   const title = data.incident.split(/[.!?。\n]/)[0];
   return (
-    <article className={`card side-${side}`}>
-      <h2 className="doc-title">고 소 장</h2>
+    <article className={`card side-${side}${mine ? " card-mine" : ""}`}>
+      {mine && <span className="badge card-mine-badge">내가 쓴 고소장</span>}
+      <h2 className="doc-title font-point">고 소 장</h2>
       <p className="doc-case">CASE #0241</p>
       <h3>사건명</h3>
       <h2>「{title}」</h2>
