@@ -12,7 +12,10 @@ services:
   backend:
     build: ./backend
     image: ghcr.io/sanggyoon/wanted-backend:${IMAGE_TAG:-latest}
-    env_file: .env
+    # 경로는 이 파일 기준이다. 백엔드 시크릿(OPENAI_API_KEY, DATABASE_URL)은
+    # backend/.env에 두고, 루트 .env는 아래 ${VIRTUAL_HOST} 치환에만 쓴다.
+    # 둘을 헷갈리면 컨테이너가 키를 못 받아 AI가 폴백으로 돌고 사건 API가 503을 낸다.
+    env_file: ./backend/.env
     environment:
       - VIRTUAL_HOST=${VIRTUAL_HOST}
       - VIRTUAL_PATH=/api/

@@ -320,6 +320,29 @@ supabase db diff --linked     # "No schema changes found"면 drift 없음
 
 ---
 
+## 배포 환경변수
+
+`.env` 파일이 **두 개**이고 역할이 다르다. 이걸 헷갈려 운영 AI가 폴백으로 돌고 사건 API가
+503을 내는 일이 있었다(2026-09-16).
+
+| 파일 | 역할 | 읽는 주체 |
+| --- | --- | --- |
+| `.env` (루트) | `docker-compose.yml`의 `${VIRTUAL_HOST}` 등 **치환** | Compose |
+| `backend/.env` | 백엔드 컨테이너 **안으로** 들어가는 값 | `env_file: ./backend/.env` |
+
+`env_file` 경로는 compose 파일 기준 상대경로다. 루트 `.env`에 `OPENAI_API_KEY`를 넣어도
+컨테이너는 보지 못한다 — Compose가 치환용으로 읽는 것과 컨테이너에 주입하는 것은 별개다.
+
+**서버의 `docker-compose.yml`은 CD가 갱신하지 않는다.** 배포 스크립트는
+`docker compose pull`(이미지)과 `up -d`만 한다. compose 파일이나 `.env`를 바꿨다면 서버에서
+직접 `git pull` 후 `docker compose up -d`를 해야 한다. 재기동 없이 compose 파일만 바꾸면
+기존 컨테이너는 옛 환경 그대로다.
+
+> **후속.** 이 수동 단계를 CD에 넣을지 검토 중이다. 지금 구조에서는 서버 설정이 레포와
+> 조용히 어긋날 수 있다.
+
+---
+
 ## 미해결/후속 결정
 
 - 인증(로그인) 방식 — 세션 vs JWT, 소셜 로그인 여부 ❓
