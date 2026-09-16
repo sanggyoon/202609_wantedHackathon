@@ -1,5 +1,9 @@
 # 프론트엔드 아키텍처
 
+> 2026-09-16 변경: 홈에서 사건 생성, /case/[token] 조회, 작성 권한 보관,
+> 만료·오류 화면을 연결했다. 고소장·답변 저장 API는 미연결이며 실제 DB 검증은
+> 로컬 DATABASE_URL 설정 후 필요하다. 최신 범위는 [사건 링크 연결](./Case_Link_Integration.md)을 따른다.
+
 > 2026-09-14 변경: A/B 진술과 양측 중재 요약에 실제 API를 연결했다.
 > 링크 공유·DB 저장·서버 상태 전이는 미연결이다. 최신 구조와 실행 방법은
 > [A 대화 엔진 연결](./A_Conversation_Integration.md)과 [B 흐름 연결](./B_Respondent_Integration.md)을 따른다.
