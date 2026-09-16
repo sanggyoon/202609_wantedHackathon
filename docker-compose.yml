@@ -12,6 +12,7 @@ services:
   backend:
     build: ./backend
     image: ghcr.io/sanggyoon/wanted-backend:${IMAGE_TAG:-latest}
+    env_file: .env
     environment:
       - VIRTUAL_HOST=${VIRTUAL_HOST}
       - VIRTUAL_PATH=/api/
