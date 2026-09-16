@@ -8,6 +8,7 @@ from app.core.tokens import hash_token, new_token, token_matches
 from app.db import DatabaseNotConfigured
 from app.main import app
 from app.repositories.cases import CaseRow
+from app.schemas.mediation import MediationReport
 
 client = TestClient(app)
 
@@ -184,3 +185,156 @@ class AvailableActionsTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+CARD = {
+    "incident_description": "연락 없이 늦었다",
+    "emotions": ["서운함"],
+    "emotion_reason": "기다려서",
+    "desired_outcome": "먼저 연락해주기",
+}
+
+REPORT = {
+    "common_ground": [],
+    "different_views": ["A: …", "B: …"],
+    "hurt_points_a": ["서운함"],
+    "hurt_points_b": ["미안함"],
+    "possible_misunderstanding": None,
+    "conversation_starter": "얘기해볼까요?",
+}
+
+
+def content_with_a_card():
+    return {"cards": {"A": CARD}, "report": None, "apology": None}
+
+
+class SubmitStatementTest(unittest.TestCase):
+    def post(self, case, body, headers=None, saved=True, content=None):
+        with (
+            patch("app.api.cases.repo.find_by_public_token_hash", return_value=case),
+            patch("app.api.cases.repo.load_content", return_value=content or EMPTY_CONTENT),
+            patch("app.api.cases.repo.submit_statement_a", return_value=saved),
+        ):
+            return client.post(
+                f"/api/cases/{PUBLIC}/statement", json=body, headers=headers or {}
+            )
+
+    def test_a_requires_writer_token(self):
+        response = self.post(make_case("DRAFT"), {"side": "A", "card": CARD})
+        self.assertEqual(response.status_code, 403)
+
+    def test_a_with_writer_token_saves(self):
+        response = self.post(
+            make_case("DRAFT"), {"side": "A", "card": CARD}, headers={"X-Writer-Token": WRITER}
+        )
+        self.assertEqual(response.status_code, 200)
+
+    def test_a_second_submission_is_409(self):
+        # 조건부 UPDATE가 0행을 반환하면 이미 제출된 것이다.
+        response = self.post(
+            make_case("DRAFT"),
+            {"side": "A", "card": CARD},
+            headers={"X-Writer-Token": WRITER},
+            saved=False,
+        )
+        self.assertEqual(response.status_code, 409)
+
+    def test_expired_case_rejects_writes(self):
+        response = self.post(
+            make_case("DRAFT", expires_in_days=-1),
+            {"side": "A", "card": CARD},
+            headers={"X-Writer-Token": WRITER},
+        )
+        self.assertEqual(response.status_code, 410)
+
+    def test_b_needs_counter_draft_status(self):
+        with (
+            patch("app.api.cases.repo.find_by_public_token_hash",
+                  return_value=make_case("AWAITING_RESPONSE")),
+            patch("app.api.cases.repo.load_content", return_value=content_with_a_card()),
+        ):
+            response = client.post(f"/api/cases/{PUBLIC}/statement",
+                                   json={"side": "B", "card": CARD})
+        self.assertEqual(response.status_code, 409)
+
+    def test_b_does_not_need_writer_token(self):
+        # B는 링크만 가지고 응답한다. 토큰을 요구하면 정상 경로가 막힌다.
+        with (
+            patch("app.api.cases.repo.find_by_public_token_hash",
+                  return_value=make_case("COUNTER_DRAFT")),
+            patch("app.api.cases.repo.load_content", return_value=content_with_a_card()),
+            patch("app.api.cases.generate_mediation") as gen,
+            patch("app.api.cases.repo.complete_counter", return_value=True),
+        ):
+            gen.return_value.report = MediationReport.model_validate(REPORT)
+            response = client.post(f"/api/cases/{PUBLIC}/statement",
+                                   json={"side": "B", "card": CARD})
+        self.assertEqual(response.status_code, 200)
+
+    def test_b_report_failure_does_not_save_the_card(self):
+        with (
+            patch("app.api.cases.repo.find_by_public_token_hash",
+                  return_value=make_case("COUNTER_DRAFT")),
+            patch("app.api.cases.repo.load_content", return_value=content_with_a_card()),
+            patch("app.api.cases.generate_mediation", side_effect=RuntimeError("openai down")),
+            patch("app.api.cases.repo.complete_counter") as save,
+        ):
+            response = client.post(f"/api/cases/{PUBLIC}/statement",
+                                   json={"side": "B", "card": CARD})
+        self.assertEqual(response.status_code, 502)
+        save.assert_not_called()
+        self.assertNotIn("openai down", response.text)
+
+    def test_b_without_a_card_is_409(self):
+        with (
+            patch("app.api.cases.repo.find_by_public_token_hash",
+                  return_value=make_case("COUNTER_DRAFT")),
+            patch("app.api.cases.repo.load_content", return_value=EMPTY_CONTENT),
+        ):
+            response = client.post(f"/api/cases/{PUBLIC}/statement",
+                                   json={"side": "B", "card": CARD})
+        self.assertEqual(response.status_code, 409)
+
+
+class ResponseTypeTest(unittest.TestCase):
+    def post(self, case, value, chosen=True):
+        with (
+            patch("app.api.cases.repo.find_by_public_token_hash", return_value=case),
+            patch("app.api.cases.repo.load_content", return_value=content_with_a_card()),
+            patch("app.api.cases.repo.choose_response_type", return_value=chosen),
+        ):
+            return client.post(
+                f"/api/cases/{PUBLIC}/response-type", json={"response_type": value}
+            )
+
+    def test_choosing_counter(self):
+        self.assertEqual(self.post(make_case(), "COUNTER").status_code, 200)
+
+    def test_choosing_twice_is_409(self):
+        self.assertEqual(self.post(make_case(), "APOLOGY", chosen=False).status_code, 409)
+
+    def test_unknown_value_is_422(self):
+        response = self.post(make_case(), "MAYBE")
+        self.assertEqual(response.status_code, 422)
+
+
+class ApologyTest(unittest.TestCase):
+    def post(self, case, body, saved=True):
+        with (
+            patch("app.api.cases.repo.find_by_public_token_hash", return_value=case),
+            patch("app.api.cases.repo.load_content", return_value=content_with_a_card()),
+            patch("app.api.cases.repo.complete_apology", return_value=saved),
+        ):
+            return client.post(f"/api/cases/{PUBLIC}/apology", json=body)
+
+    def test_body_is_required(self):
+        response = self.post(make_case("APOLOGY_DRAFT"), {"body": "  "})
+        self.assertEqual(response.status_code, 422)
+
+    def test_submits_with_body_only(self):
+        response = self.post(make_case("APOLOGY_DRAFT"), {"body": "미안해"})
+        self.assertEqual(response.status_code, 200)
+
+    def test_second_submission_is_409(self):
+        response = self.post(make_case("APOLOGY_DRAFT"), {"body": "미안해"}, saved=False)
+        self.assertEqual(response.status_code, 409)

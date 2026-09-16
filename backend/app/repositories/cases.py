@@ -9,6 +9,8 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from app.db import connection
+from app.schemas.complaint import SharedStatement
+from app.schemas.mediation import MediationReport
 
 CASE_LIFETIME_DAYS = 7
 
@@ -98,4 +100,132 @@ def _to_case(row: dict) -> CaseRow:
         answered_at=row["answered_at"],
         expires_at=row["expires_at"],
         writer_token_hash=row["writer_token_hash"],
+    )
+
+
+# ---------------------------------------------------------------------------
+# 쓰기
+# ---------------------------------------------------------------------------
+#
+# 모든 쓰기는 **상태 조건부 UPDATE를 먼저** 실행한다. 그 UPDATE가 사건 행에 락을
+# 걸기 때문에, 동시에 들어온 두 번째 요청은 첫 번째가 커밋될 때까지 기다렸다가
+# 바뀐 상태를 보고 0행을 얻는다. 이것이 "최초 성공 요청만 반영"의 구현이다
+# (docs/Data_Flow.md §7.2). 반환값 False는 호출자에게 409를 뜻한다.
+
+
+def submit_statement_a(case_id: str, card: SharedStatement) -> bool:
+    """DRAFT → AWAITING_RESPONSE. A 카드 저장과 전이가 한 트랜잭션."""
+    with connection() as conn:
+        moved = conn.execute(
+            "update cases set status = 'AWAITING_RESPONSE' "
+            " where id = %s and status = 'DRAFT'",
+            (case_id,),
+        ).rowcount
+        if moved == 0:
+            return False
+        _insert_card(conn, case_id, "A", card)
+        return True
+
+
+def choose_response_type(case_id: str, response_type: str) -> bool:
+    """AWAITING_RESPONSE → COUNTER_DRAFT 또는 APOLOGY_DRAFT."""
+    target = "COUNTER_DRAFT" if response_type == "COUNTER" else "APOLOGY_DRAFT"
+    with connection() as conn:
+        return (
+            conn.execute(
+                "update cases set status = %s, response_type = %s "
+                " where id = %s and status = 'AWAITING_RESPONSE'",
+                (target, response_type, case_id),
+            ).rowcount
+            == 1
+        )
+
+
+def complete_counter(case_id: str, card: SharedStatement, report: MediationReport) -> bool:
+    """COUNTER_DRAFT → COUNTER_COMPLETED.
+
+    B 카드·중재 리포트·상태 전이가 **한 트랜잭션**이다. 어느 하나가 실패하면
+    전부 롤백되므로 사용자는 온전히 재시도할 수 있다.
+    """
+    with connection() as conn:
+        moved = conn.execute(
+            "update cases set status = 'COUNTER_COMPLETED', answered_at = now(), "
+            "       expires_at = now() + make_interval(days => %s) "
+            " where id = %s and status = 'COUNTER_DRAFT'",
+            (CASE_LIFETIME_DAYS, case_id),
+        ).rowcount
+        if moved == 0:
+            return False
+        _insert_card(conn, case_id, "B", card)
+        conn.execute(
+            """
+            insert into mediation_reports
+                (case_id, common_ground, different_views, hurt_points_a,
+                 hurt_points_b, possible_misunderstanding, conversation_starter)
+            values (%s, %s, %s, %s, %s, %s, %s)
+            """,
+            (
+                case_id,
+                report.common_ground,
+                report.different_views,
+                report.hurt_points_a,
+                report.hurt_points_b,
+                report.possible_misunderstanding,
+                report.conversation_starter,
+            ),
+        )
+        return True
+
+
+def complete_apology(case_id: str, apology: dict) -> bool:
+    """APOLOGY_DRAFT → APOLOGY_COMPLETED. 입력 텍스트를 그대로 저장한다."""
+    with connection() as conn:
+        moved = conn.execute(
+            "update cases set status = 'APOLOGY_COMPLETED', answered_at = now(), "
+            "       expires_at = now() + make_interval(days => %s) "
+            " where id = %s and status = 'APOLOGY_DRAFT'",
+            (CASE_LIFETIME_DAYS, case_id),
+        ).rowcount
+        if moved == 0:
+            return False
+        conn.execute(
+            """
+            insert into apologies
+                (case_id, body, understood_point, admitted_point, future_commitment)
+            values (%s, %s, %s, %s, %s)
+            """,
+            (
+                case_id,
+                apology["body"],
+                apology.get("understood_point"),
+                apology.get("admitted_point"),
+                apology.get("future_commitment"),
+            ),
+        )
+        return True
+
+
+def _insert_card(conn, case_id: str, side: str, card: SharedStatement) -> None:
+    conn.execute(
+        """
+        insert into statement_cards
+            (case_id, side, cute_charge, incident_summary, incident_description,
+             emotions, emotion_reason, hurt_point, different_viewpoint,
+             desired_outcome, expected_behavior, assumption)
+        values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """,
+        (
+            case_id,
+            side,
+            card.cute_charge,
+            card.incident_summary,
+            card.incident_description,
+            card.emotions,
+            card.emotion_reason,
+            card.hurt_point,
+            card.different_viewpoint,
+            card.desired_outcome,
+            card.expected_behavior,
+            card.assumption,
+        ),
     )

@@ -1,7 +1,7 @@
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, StringConstraints
 
 from app.schemas.complaint import SharedStatement
 from app.schemas.mediation import MediationReport
@@ -73,3 +73,25 @@ class CaseView(BaseModel):
     expires_at: datetime
     available_actions: list[Action]
     content: CaseContent | None
+
+
+class StatementSubmission(BaseModel):
+    side: Literal["A", "B"]
+    card: SharedStatement
+
+
+class ResponseTypeSubmission(BaseModel):
+    response_type: Literal["COUNTER", "APOLOGY"]
+
+
+# 앞뒤 공백을 떼고 나서도 내용이 남아야 한다. min_length만으로는 "   "가 통과한다.
+NonBlank = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=8000)]
+
+
+class ApologySubmission(BaseModel):
+    """B가 직접 작성한 텍스트를 그대로 저장한다. AI를 호출하지 않는다 (PRD §13)."""
+
+    body: NonBlank
+    understood_point: str | None = Field(default=None, max_length=8000)
+    admitted_point: str | None = Field(default=None, max_length=8000)
+    future_commitment: str | None = Field(default=None, max_length=8000)
