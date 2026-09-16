@@ -340,7 +340,11 @@ AI가 사과문을 대신 작성하지 않는다. 문장 교정 기능의 제공
 | FR-13 | 사건 결과물은 정해진 시점으로부터 7일 후 만료되어야 한다. | 필수 |
 | FR-14 | 만료된 결과물은 열람할 수 없어야 한다. | 필수 |
 
-## 11. 데이터 구조 초안
+## 11. 데이터 구조
+
+> 2026-09-16 갱신: 최초 "초안"에서 구현 결과를 반영한 버전으로 바꿨다. 실제 스키마는
+> `docs/Supabase_Schema_Design.md`가 기준이며, 설계 근거는 `docs/API_Design.md` §8-1에 있다.
+> 아래 표에서 **굵게** 표시한 것이 초안 이후 추가된 필드다.
 
 ### Case
 
@@ -348,10 +352,16 @@ AI가 사과문을 대신 작성하지 않는다. 문장 교정 기능의 제공
 | --- | --- | --- |
 | `id` | UUID | 내부 사건 식별자 |
 | `public_token_hash` | string | URL 토큰의 해시값 |
+| **`writer_token_hash`** | string/null | A의 쓰기 권한 토큰 해시. 고소장 확정에만 요구 |
 | `status` | enum | 사건 진행 상태 |
 | `created_at` | datetime | 사건 생성 시각 |
+| **`answered_at`** | datetime/null | B의 최종 답변 시각. 만료 기준점 |
 | `expires_at` | datetime | 사건 만료 시각 |
+| **`purged_at`** | datetime/null | 결과물 삭제가 완료된 시각. 삭제 완료의 증거 |
 | `response_type` | enum/null | `COUNTER` 또는 `APOLOGY` |
+
+`expires_at`은 생성 시 `created_at + 7일`로 시작하고, B의 최종 답변 시
+`answered_at + 7일`로 **갱신된다.** 답변 기준만 쓰면 미답변 사건이 영구히 남는다.
 
 ### StatementCard
 
@@ -363,8 +373,18 @@ AI가 사과문을 대신 작성하지 않는다. 문장 교정 기능의 제공
 | `incident_description` | text | 정리된 사건 내용 |
 | `emotions` | string[] | 감정 목록 |
 | `emotion_reason` | text | 감정의 이유 |
+| **`hurt_point`** | text/null | 가장 서운했던 지점 |
 | `different_viewpoint` | text/null | 다르게 생각할 수 있는 지점 |
 | `desired_outcome` | text | 상대에게 바라는 점 |
+| **`expected_behavior`** | text/null | 그때 기대했던 행동 |
+| **`assumption`** | text/null | 사실로 확인되지 않은 추측. 사실처럼 표시하지 않는다 (§13) |
+
+`cute_charge`·`incident_summary`·`different_viewpoint` 셋은 **아직 생성되지 않는다.**
+대화 엔진이 추출하지 않아 항상 빈 값이다. 귀여운 죄명은 제품 컨셉의 핵심이므로 생성
+주체를 정해야 한다 (`docs/API_Design.md` §10-2).
+
+`expected_behavior`·`assumption`·`hurt_point`는 공유 항목 선택 화면에서 사용자가 공유
+여부를 고르는 대상이다. 공유하지 않으면 `"공유하지 않은 내용"`이 들어간다.
 
 ### Apology
 
@@ -372,8 +392,11 @@ AI가 사과문을 대신 작성하지 않는다. 문장 교정 기능의 제공
 | --- | --- | --- |
 | `body` | text | B가 직접 작성한 사과문 |
 | `understood_point` | text/null | B가 이해한 내용 |
+| **`admitted_point`** | text/null | B가 인정한 부분 |
 | `future_commitment` | text/null | B가 직접 작성한 약속 |
 | `submitted_at` | datetime | 제출 시각 |
+
+`body`만 필수다. 앞뒤 공백을 떼고 나서도 내용이 남아야 한다.
 
 ### MediationReport
 

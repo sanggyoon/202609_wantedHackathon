@@ -68,7 +68,10 @@ DB 접근은 `psycopg` 3으로 한다. **풀은 최초 사용 시점에 만들�
 Supabase Transaction pooler(PgBouncer)는 prepared statement를 세션 간에 유지하지 못하므로
 `prepare_threshold=None`으로 끈다. 켜두면 간헐적으로 실패한다.
 
-프론트는 이미 두 엔드포인트에 연결돼 있다. `Frontend_Architecture.md` §9가 요구한
+**2026-09-16 기준 프로덕션에서 전 경로가 동작한다.** 실제 LLM(`mode: "openai"`)이 붙어
+있고 DB 읽기·쓰기가 확인됐다. 배포 환경변수 배선 경위는 `Tech_ADR.md` §11 참고.
+
+프론트는 아직 AI 두 엔드포인트에만 연결돼 있다. 사건 계층(링크)은 미연결이다. `Frontend_Architecture.md` §9가 요구한
 어댑터 계층이 `frontend/src/lib/api/{conversation,mediation}.ts`로 존재하고,
 `useConversation.ts`와 `MediationSummary.tsx`가 이를 통해 호출한다. 화면 컴포넌트가
 직접 `fetch`를 쓰지 않는다는 규칙이 지켜지고 있다.
@@ -510,7 +513,7 @@ DFD §9의 검수 항목 중 **구현이 책임지는 것**들이다. 상당수�
 | 외부 AI 제공자 보관 | **구현됨** | OpenAI 호출에 `store=False` — §10 참고 |
 | OpenAI 로깅 | **구현됨** | `openai_gateway`가 요청·응답 본문을 로그에 남기지 않음 |
 | 서버 영속 저장 | **구현됨(구조적)** | DB 접근 코드 자체가 없음 |
-| 접근 로그의 토큰 | **미구현** | §10-1 |
+| 접근 로그의 토큰 | **미구현 — 이제 실제로 토큰이 URL에 실린다** | §10-1 |
 | 분석 이벤트 | **해당 없음** | 분석 도구 미도입 |
 
 ### `store=False`가 해소한 것
@@ -536,9 +539,21 @@ DFD §9의 검수 항목 중 **구현이 책임지는 것**들이다. 상당수�
 | 6 | 위험 내용 감지 기준과 응답 (PRD §14) | 안전 검증 단계 |
 | 7 | 사건당 대화 턴 수 상한 (LLM 비용 방어) | 비용 추이를 보고 |
 | 8 | ~~백엔드 DB 접근 계층 선택~~ → `psycopg` 3 (§2) | 해소됨 |
-| 9 | 배포 환경변수 배선 — `docker-compose.yml`에 `DATABASE_URL`·`OPENAI_API_KEY`가 없음 | §6 배포 전 |
+| 9 | ~~배포 환경변수 배선~~ → 완료 (`Tech_ADR.md` §11) | 해소됨 |
+| 10 | **`pg_cron` 만료 배치가 실제로 도는지 확인** — 등록만 했고 실행 이력을 본 적이 없다 | **빠를수록 좋음** |
+| 11 | PRD §14 "B가 답변 작성 중 페이지 종료" 복구 — 서버 무저장은 확정, 로컬 저장 여부 미정 | 프론트 구현 시 |
 
 **해소됨.** 카드 형태 통일 방향 → DB 기준 (§8-1, 2026-09-14).
+
+10번이 지금 가장 값싸고 중요한 확인이다. 7일 뒤 삭제는 이 제품의 핵심 약속인데
+(`Data_Flow.md` §2-5), 잡이 등록만 되고 돌지 않으면 **아무도 모르는 채로 지켜지지 않는다.**
+lazy 검사가 열람은 막으므로 증상이 드러나지 않는다.
+
+```sql
+select jobname, schedule, active from cron.job;
+select status, start_time, return_message
+  from cron.job_run_details order by start_time desc limit 5;
+```
 
 9번은 이번 조사에서 드러난 것이다. 배포된 백엔드에 `OPENAI_API_KEY`가 전달되지 않아
 **운영 환경의 AI 대화가 규칙 기반 폴백(`mode: "local"`)으로 동작하고 있다.** DB 접속 코드를

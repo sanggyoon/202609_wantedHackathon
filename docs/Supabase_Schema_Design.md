@@ -113,7 +113,9 @@ create table cases (
   created_at        timestamptz not null default now(),
   answered_at       timestamptz,
   expires_at        timestamptz not null default (now() + interval '7 days'),
-  purged_at         timestamptz
+  purged_at         timestamptz,
+  -- 2026-09-15 추가. A의 쓰기 권한 토큰 해시 (API_Design §6.1).
+  writer_token_hash text
 );
 
 create index cases_expires_at_idx
@@ -141,12 +143,18 @@ create table statement_cards (
   emotion_reason       text           not null,
   different_viewpoint  text,
   desired_outcome      text           not null,
+  -- 2026-09-15 추가 (§7 4번). 프론트에 있던 항목을 DB가 흡수한 것이라 nullable이다.
+  hurt_point           text,                         -- 서운했던 지점
+  expected_behavior    text,                         -- 그때 기대했던 행동
+  assumption           text,                         -- 사실로 확인되지 않은 추측
   created_at           timestamptz    not null default now(),
   unique (case_id, side)
 );
 ```
 
-`different_viewpoint`만 nullable이다. PRD §11에서 `text/null`로 표기된 유일한 필드다.
+nullable인 것은 `different_viewpoint`와 나중에 추가된 셋이다. 넷 다 조회 시 `None`이
+올 수 있고, **API 계층이 빈 문자열로 바꿔 내보낸다**(`SharedStatement`의 검증기).
+`different_viewpoint`만은 `null`을 유지한다 — "아직 생성되지 않음"과 "빈 값"이 다르다.
 
 `case_id` 단독 인덱스는 두지 않는다. `UNIQUE(case_id, side)`가 만드는 btree 인덱스의
 선두 컬럼이 `case_id`이므로, `where case_id = ?` 조회와 FK cascade 삭제를 이미 커버한다.
@@ -159,6 +167,7 @@ create table apologies (
   case_id            uuid        primary key references cases(id) on delete cascade,
   body               text        not null,
   understood_point   text,
+  admitted_point     text,       -- 2026-09-15 추가. B가 인정한 부분
   future_commitment  text,
   submitted_at       timestamptz not null default now()
 );
