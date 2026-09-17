@@ -379,9 +379,9 @@ AI가 사과문을 대신 작성하지 않는다. 문장 교정 기능의 제공
 | **`expected_behavior`** | text/null | 그때 기대했던 행동 |
 | **`assumption`** | text/null | 사실로 확인되지 않은 추측. 사실처럼 표시하지 않는다 (§13) |
 
-`cute_charge`·`incident_summary`·`different_viewpoint` 셋은 **아직 생성되지 않는다.**
-대화 엔진이 추출하지 않아 항상 빈 값이다. 귀여운 죄명은 제품 컨셉의 핵심이므로 생성
-주체를 정해야 한다 (`docs/API_Design.md` §10-2).
+`cute_charge`·`incident_summary`는 고소장 검토 화면에서 공유 선택이 끝난 카드로 생성하고,
+사용자가 확인·수정한 뒤 접수한다 (`docs/API_Design.md` §8-1). `different_viewpoint`는 상대
+관점을 추측하지 않고 만드는 방법이 정해지지 않아 **아직 생성하지 않는다** (§10-2).
 
 `expected_behavior`·`assumption`·`hurt_point`는 공유 항목 선택 화면에서 사용자가 공유
 여부를 고르는 대상이다. 공유하지 않으면 `"공유하지 않은 내용"`이 들어간다.
