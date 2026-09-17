@@ -138,6 +138,7 @@ create table statement_cards (
   side                 statement_side not null,
   cute_charge          text           not null,
   incident_summary     text           not null,
+  story_intro          text           not null default '',
   incident_description text           not null,
   emotions             text[]         not null default '{}',
   emotion_reason       text           not null,
