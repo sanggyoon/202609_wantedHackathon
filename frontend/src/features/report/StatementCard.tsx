@@ -1,4 +1,4 @@
-import type { Statement } from "./types";
+import { feelingText, type Statement } from "./types";
 export function StatementCard({
   side,
   data,
@@ -7,9 +7,11 @@ export function StatementCard({
   side: "A" | "B";
   data: Statement;
   mine?: boolean;
+  saved?: boolean;
 }) {
   const other = side === "A" ? "B" : "A";
-  const title = data.incident.split(/[.!?。\n]/)[0];
+  const title =
+    data.incident_summary || data.incident_description.split(/[.!?。\n]/)[0];
   return (
     <article className={`card side-${side}${mine ? " card-mine" : ""}`}>
       {mine && <span className="badge card-mine-badge">내가 쓴 고소장</span>}
@@ -22,16 +24,27 @@ export function StatementCard({
         신청인 {side} · 상대방 {other}
       </p>
       <h3>사건 개요</h3>
-      <p>{data.incident}</p>
+      <p>{data.incident_description}</p>
       <h3>신청인이 느낀 것</h3>
-      <p>{data.feeling}</p>
-      <h3>현재 확인된 핵심 쟁점</h3>
-      <p>
-        중재자(밤톨)가 연결되면, 두 사람이 진짜로 부딪힌 지점을 여기에
-        정리해드릴게요.
+      <p>{feelingText(data)}</p>
+      <p className="notice">
+        작성자의 관점을 담은 내용이며, 상대방의 동의나 사실 확인을 뜻하지
+        않아요.
       </p>
       <h3>원하는 것</h3>
-      <p>{data.wish}</p>
+      <p>{data.desired_outcome}</p>
+      {data.expected_behavior && (
+        <>
+          <h3>그때 기대했던 점</h3>
+          <p>{data.expected_behavior}</p>
+        </>
+      )}
+      {data.assumption && (
+        <>
+          <h3>사실로 확인되지 않은 추측</h3>
+          <p>{data.assumption}</p>
+        </>
+      )}
     </article>
   );
 }

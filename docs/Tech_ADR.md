@@ -283,6 +283,64 @@ supabase db diff --linked     # "No schema changes found"면 drift 없음
 
 ---
 
+## 11. 배포 환경변수 — `.env`가 두 개다
+
+`.env` 파일이 **두 개**이고 역할이 다르다. 이걸 헷갈려 운영 AI가 폴백으로 돌고 사건 API가
+503을 내는 일이 있었다(2026-09-16).
+
+| 파일 | 역할 | 읽는 주체 |
+| --- | --- | --- |
+| `.env` (루트) | `docker-compose.yml`의 `${VIRTUAL_HOST}` 등 **치환** | Compose |
+| `backend/.env` | 백엔드 컨테이너 **안으로** 들어가는 값 | `env_file: ./backend/.env` |
+
+`env_file` 경로는 compose 파일 기준 상대경로다. 루트 `.env`에 `OPENAI_API_KEY`를 넣어도
+컨테이너는 보지 못한다 — Compose가 치환용으로 읽는 것과 컨테이너에 주입하는 것은 별개다.
+
+---
+
+## 12. 서버는 `main`의 거울이다
+
+> 2026-09-16 결정. 이전에는 CD가 이미지만 갱신하고 서버의 `docker-compose.yml`은
+> 사람이 직접 `git pull` 해야 했다. 그 결과 서버 설정이 레포와 조용히 어긋났고,
+> 배포 하나에 반나절을 썼다.
+
+**결정.** 배포 스크립트가 서버 체크아웃을 `origin/main`으로 **강제 동기화**한다.
+
+```bash
+git fetch origin main
+git reset --hard origin/main
+```
+
+**원칙.** git이 추적하는 파일(`docker-compose.yml`, `deploy.yml` 등)은 어디서나 동일하고,
+서버마다 다른 값은 **`.env`로만** 표현한다. 서버에서 추적 파일을 직접 고치면 다음 배포에
+버려진다. 급히 서버에서 고쳤다면 레포에도 반영해 푸시해야 유지된다.
+
+**`.env`는 안전하다.** `.gitignore` 대상이라 `reset --hard`가 건드리지 않는다.
+
+**대안과 트레이드오프.**
+
+| | `git pull` | `git reset --hard` (채택) | 수동 (이전) |
+| --- | --- | --- | --- |
+| 서버 직접 수정 | 유지 | **버려짐** | 유지 |
+| 충돌 | 배포 실패 가능 | 없음 | 해당 없음 |
+| 레포-서버 일치 | 보장 안 됨 | **보장됨** | 보장 안 됨 |
+
+`pull`은 서버에 미커밋 수정이 있으면 `Your local changes would be overwritten`으로 배포가
+멈춘다. 서버에서 커밋해뒀다면 충돌까지 난다. 어느 쪽도 배포 파이프라인에서 겪고 싶은 일이
+아니다. `reset --hard`는 파괴적이지만 "서버는 거울"이라는 원칙을 코드로 강제한다.
+
+### `docker compose up -d`만으로는 이미지가 갱신되지 않는다
+
+`image: ...:${IMAGE_TAG:-latest}`이므로 `IMAGE_TAG` 없이 `up -d`만 하면 서버에 있던
+**옛 `:latest`** 가 그대로 뜬다. 배포는 성공했는데 옛 코드가 도는 사고가 실제로 났다
+(2026-09-16, API 경로가 `/api/health` 하나로 줄어든 상태로 운영됨).
+
+`docker compose pull`을 반드시 먼저 한다. 수동으로 재기동할 때도 마찬가지다.
+
+배포 후 `docker compose ps`로 실제로 뜬 이미지를 로그에 남겨 이 사고를 빨리 발견한다.
+
+---
+
 # CI/CD 플로우
 
 두 개의 파이프라인으로 나뉜다.
@@ -309,9 +367,11 @@ supabase db diff --linked     # "No schema changes found"면 drift 없음
     │  job2  deploy  (job1 성공 후)
     │    └─ SSH 접속 → 서버에서:
     │          docker login ghcr.io (CR_PAT)
-    │          IMAGE_TAG=<sha> docker compose pull
+    │          git fetch + reset --hard origin/main   ← 서버를 main의 거울로 (§12)
+    │          IMAGE_TAG=<sha> docker compose pull     ← pull 없이 up 하면 옛 이미지가 뜬다
     │          docker compose up -d
     │          docker image prune -f
+    │          docker compose ps                       ← 실제로 뜬 이미지 기록
     ▼
   우분투 서버
     Nginx(443) ─ /     → frontend:3000
@@ -324,6 +384,9 @@ supabase db diff --linked     # "No schema changes found"면 drift 없음
 
 - 인증(로그인) 방식 — 세션 vs JWT, 소셜 로그인 여부 ❓
 - 마이그레이션 적용 자동화 — `deploy.yml`에 `supabase db push` 스텝을 넣을지 ❓ (§10 참고)
-- LLM 제공자 — ❓ (OpenAI/Anthropic/기타), 비용·레이트리밋 고려
+  - §12에서 서버 동기화는 자동화됐으나 **DB 마이그레이션은 여전히 수동**이다
+- ~~LLM 제공자~~ → **OpenAI `gpt-4.1-mini`** 로 구현됨 (`backend/app/core/config.py`, 2026-09-14).
+  `store=False`로 호출해 제공자 무보관을 적용. 비용·레이트리밋 관측은 아직 없음 — 사건당
+  대화 턴 수 상한이 미정이다 (`docs/API_Design.md` §10-7)
 
 ~~DB 마이그레이션 도구~~ → §10에서 결정 (2026-09-10), 적용 방식은 Supabase CLI로 번복 (2026-09-12)

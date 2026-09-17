@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { StartScreen } from "./StartScreen";
 import { ShareSelectScreen } from "./ShareSelectScreen";
@@ -9,6 +9,7 @@ import { ConversationScreen } from "@/features/conversation/ConversationScreen";
 import { StatementCard } from "@/features/report/StatementCard";
 import { PreviewScreen } from "@/features/report/PreviewScreen";
 import { ApologyScreen } from "@/features/report/ApologyScreen";
+import { MediationSummary } from "@/features/report/MediationSummary";
 import type { Statement, Apology, EntryMode } from "@/features/report/types";
 const entryModes = ["new", "invited", "result"] as const;
 const screens = [
@@ -38,13 +39,11 @@ export function CaseController({
   initialA,
   initialB,
   initialApology,
-  questions,
   initialEntryMode = "new",
 }: {
   initialA: Statement;
   initialB: Statement;
   initialApology: Apology;
-  questions: Record<"A" | "B", string[]>;
   initialEntryMode?: EntryMode;
 }) {
   const [screen, setScreen] = useState<Screen>("사건 접수");
@@ -52,15 +51,17 @@ export function CaseController({
   const [a, setA] = useState(initialA);
   const [b, setB] = useState(initialB);
   const [apology, setApology] = useState(initialApology);
-  const [mounted, setMounted] = useState(false);
+  // 서버 렌더에서는 false, 클라이언트에서는 true — 포털은 document가 있을 때만 연다.
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
   const [resultTab, setResultTab] = useState<"apology" | "counterclaim">(
     "apology",
   );
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<number>(0);
-  useEffect(() => {
-    setMounted(true);
-  }, []);
   const showToast = (message: string) => {
     setToast(message);
     window.clearTimeout(toastTimer.current);
@@ -75,27 +76,7 @@ export function CaseController({
         <StatementCard side="A" data={a} />
         <StatementCard side="B" data={b} mine />
       </div>
-      <div className="panel">
-        <span className="badge">중재자의 정리 (판결 아님)</span>
-        <h2 className="text-primary">두 사람을 위한, 중재자의 정리</h2>
-        <Notice>
-          중재자(밤톨) 미연결 상태예요. 아래 정리 영역은 자리 표시자입니다.
-        </Notice>
-        <h3>함께 인정하는 내용</h3>
-        <p>두 이야기에서 확인한 공통점이 표시될 자리</p>
-        <h3>다르게 생각하는 내용</h3>
-        <p>기억과 기대의 차이가 표시될 자리</p>
-        <h3>각자가 서운했던 점</h3>
-        <p>신청인(A): {a.feeling}</p>
-        <p>상대방(B): {b.feeling}</p>
-        <h3>오해가 생긴 지점</h3>
-        <p>단정하지 않은 오해 가능성이 표시될 자리</p>
-        <h3 className="recommend-title text-primary">중재자의 추천 방안</h3>
-        <p className="recommend-desc">
-          중재자(밤톨)가 연결되면, 두 사람이 다시 가까워질 수 있는 작은
-          해결책을 여기에 제안해드릴게요.
-        </p>
-      </div>
+      <MediationSummary a={a} b={b} />
     </>
   );
   const apologyResultContent = (
@@ -103,41 +84,44 @@ export function CaseController({
       <Heading label="심리 종결 · 화해 성립" title="미안한 마음이 도착했어요.">
         여기까지 오느라 고생 많았어요. 두 분의 이야기를 천천히 읽어봐요.
       </Heading>
-      <Notice>신청인(A)의 사건: {a.incident}</Notice>
+      <Notice>
+        신청인(A)의 사건: {a.incident_summary || a.incident_description}
+      </Notice>
       <article className="card side-B">
         <img src="/images/apple.png" alt="" className="apology-icon" />
         <h2 className="doc-title">사 과 문</h2>
         <p className="doc-case">마음을 담아 보내요.</p>
-        {apology.understood && (
+        {apology.understood_point && (
           <>
             <h3>내가 이해한 상대의 마음</h3>
-            <p>{apology.understood}</p>
+            <p>{apology.understood_point}</p>
           </>
         )}
-        {apology.admitted && (
+        {apology.admitted_point && (
           <>
             <h3>내가 인정하는 부분</h3>
-            <p>{apology.admitted}</p>
+            <p>{apology.admitted_point}</p>
           </>
         )}
         <h3>상대에게 전하는 사과</h3>
         <p>{apology.body}</p>
-        {apology.promise && (
+        {apology.future_commitment && (
           <>
             <h3>다음에는 이렇게 할게</h3>
-            <p>{apology.promise}</p>
+            <p>{apology.future_commitment}</p>
           </>
         )}
       </article>
       <section className="panel">
         <h2>사건 종결</h2>
-        <h3>사과한 행동 또는 상황</h3>
-        <p>중재자(밤톨) 연결 후, 화해서에 직접 담긴 내용만 요약해드릴 자리예요.</p>
-        <h3>사과를 받은 당신에게 · 밤톨의 추천</h3>
         <p>
-          중재자(밤톨)가 연결되면, 사과를 받은 지금 어떤 말이나 행동을 건네면
-          두 사람이 더 편안해질지 살며시 추천해드릴게요.
+          B의 사과문 작성이 끝났어요. 위 카드에는 직접 적은 내용만 담았고,
+          AI가 사과나 약속을 추가하지 않았어요.
         </p>
+        <Notice>
+          현재 브라우저 안의 체험 결과예요. 실제 상대에게 전송되거나 DB에
+          저장되지는 않았어요.
+        </Notice>
       </section>
       <Notice>
         ‘화해 성립’은 답변이 끝났다는 뜻이에요. 사과를 꼭 받아들여야 한다는
@@ -178,7 +162,7 @@ export function CaseController({
           <ConversationScreen
             key={side}
             side={side}
-            questions={questions[side]}
+            sharedStatement={side === "B" ? a : undefined}
             onComplete={(v) => {
               if (side === "A") setA(v);
               else setB(v);
@@ -194,7 +178,10 @@ export function CaseController({
         <ShareSelectScreen
           side="A"
           data={a}
-          onComplete={() => setScreen("고소장 검토")}
+          onComplete={(value) => {
+            setA(value);
+            setScreen("고소장 검토");
+          }}
         />
       );
       break;
@@ -203,7 +190,10 @@ export function CaseController({
         <ShareSelectScreen
           side="B"
           data={b}
-          onComplete={() => setScreen("맞고소장 검토")}
+          onComplete={(value) => {
+            setB(value);
+            setScreen("맞고소장 검토");
+          }}
         />
       );
       break;
@@ -247,7 +237,8 @@ export function CaseController({
               </Button>
             </div>
             <Notice>
-              상대의 답변을 기다리는 중 · 판결문은 7일간 보관돼요 (기준 시각 미정)
+              상대의 답변을 기다리는 중 · 판결문은 7일간 보관돼요 (기준 시각
+              미정)
             </Notice>
             <Button onClick={() => setScreen("소환장 도착")}>
               피고가 받는 화면 체험하기 →
@@ -316,8 +307,8 @@ export function CaseController({
             </Button>
           </div>
           <Notice>
-            어떤 걸 선택해도 괜찮아요. 저는 누가 옳은지 가리려는 게 아니라, 두 분이
-            다시 이야기 나누길 바랄 뿐이에요.
+            어떤 걸 선택해도 괜찮아요. 저는 누가 옳은지 가리려는 게 아니라, 두
+            분이 다시 이야기 나누길 바랄 뿐이에요.
           </Notice>
         </>
       );
@@ -328,7 +319,7 @@ export function CaseController({
     case "사과문 작성":
       content = (
         <ApologyScreen
-          summary={a.incident}
+          summary={a.incident_summary || a.incident_description}
           onSubmit={(v) => {
             setApology(v);
             setScreen("화해 성립");
@@ -391,20 +382,26 @@ export function CaseController({
             title="잠깐, 당신의 안전이 먼저예요."
           >
             혹시 위협이나 폭력과 관련된 일이라면, 이건 장난스러운 고소장으로
-            가볍게 다룰 수 없어요. 당신이 안전한 게 저에겐 무엇보다 중요하거든요.
+            가볍게 다룰 수 없어요. 당신이 안전한 게 저에겐 무엇보다
+            중요하거든요.
           </Heading>
           <Notice>
             위험 내용 감지 기능은 연결되지 않았습니다. 휴정 안내 화면의 구성
             예시입니다.
           </Notice>
-          <Button onClick={() => setScreen("사건 접수")}>접수 창구로 돌아가기</Button>
+          <Button onClick={() => setScreen("사건 접수")}>
+            접수 창구로 돌아가기
+          </Button>
         </>
       );
       break;
     case "심리 준비":
       content = (
         <>
-          <Heading label="화면 상태 예시" title="찬찬히 사건을 살펴보고 있어요." />
+          <Heading
+            label="화면 상태 예시"
+            title="찬찬히 사건을 살펴보고 있어요."
+          />
           <div
             className="panel skeleton"
             role="status"
@@ -475,7 +472,7 @@ export function CaseController({
           <option key={s}>{s}</option>
         ))}
       </select>
-      <small>가상 사건 · 저장되지 않음</small>
+      <small>A/B 대화·중재 AI 연결 · 링크·DB 저장 미연결</small>
     </aside>
   );
   const devTabs = (

@@ -1,5 +1,13 @@
 # 프론트엔드 아키텍처
 
+> 2026-09-16 변경: 홈에서 사건 생성, /case/[token] 조회, 작성 권한 보관,
+> 만료·오류 화면을 연결했다. 고소장·답변 저장 API는 미연결이며 실제 DB 검증은
+> 로컬 DATABASE_URL 설정 후 필요하다. 최신 범위는 [사건 링크 연결](./Case_Link_Integration.md)을 따른다.
+
+> 2026-09-14 변경: A/B 진술과 양측 중재 요약에 실제 API를 연결했다.
+> 링크 공유·DB 저장·서버 상태 전이는 미연결이다. 최신 구조와 실행 방법은
+> [A 대화 엔진 연결](./A_Conversation_Integration.md)과 [B 흐름 연결](./B_Respondent_Integration.md)을 따른다.
+
 > 버전: 0.1 · 작성일: 2026-09-10
 > 상태: 프론트엔드 설계 기준 / API 계약과 제품 미정 정책은 후속 확정
 > 근거: [PRD](./PRD.md), [디자인 시스템](./Design_System.md), [기술 ADR](./Tech_ADR.md)
@@ -148,6 +156,8 @@ frontend/src/
 
 ## 9. API 연결 경계
 
+> 2026-09-14: 아래 계약 목록에 실제 경로·요청·응답·오류 코드가 부여됐다. **`docs/API_Design.md`가 기준 문서다.** 이 절은 "프론트가 무엇을 필요로 하는가"의 기록으로 남긴다.
+
 현재 문서의 백엔드 진행 기록은 health API까지 설명한다. 아래 기능은 필요한 계약 목록이며 기존 구현으로 가정하지 않는다.
 
 | 필요한 계약 | 프론트가 필요한 결과 |
@@ -207,6 +217,21 @@ frontend/src/
 검수 시 단일 사건 URL 유지, A/B 동등한 카드 배치, 모바일 입력창 가림 여부, 48px 터치 영역, 요약 수정, 직접 작성 사과문 보존, 원문 영구 저장 부재를 확인한다.
 
 ## 13. 후속 결정 사항
+
+> **2026-09-15 완료 — 카드 필드를 DB 기준으로 바꿨다.** `features/report/types.ts`의
+> `Statement`·`Apology`가 DB `statement_cards`·`apologies` 컬럼명을 따르도록 개편된다.
+> `incident`→`incident_description`, `feeling`→`emotions[]`+`emotion_reason`,
+> `wish`→`desired_outcome`, `expectation`→`expected_behavior`, `guess`→`assumption`,
+> `admitted`→`admitted_point`. 여기에 `cute_charge`·`incident_summary`·
+> `different_viewpoint` 세 필드가 들어왔으나 **생성 주체가 없어 항상 빈 값**이다.
+> 자세한 매핑은 `docs/API_Design.md` §8-1.
+>
+> `feeling`은 `emotions[]`·`emotion_reason`·`hurt_point` 셋으로 갈렸다. 예전에는 이
+> 셋을 한 덩어리 텍스트로 합치면서 감정 목록이 카드 단계에서 버려지고 있었다.
+> 화면 표시용으로 합칠 때는 `types.ts`의 `feelingText()`를 쓴다 — 저장 형태가 아니다.
+>
+> 공유 항목 선택 화면의 토글 단위와 DB 필드 단위는 1:1이 아니다. "그때 느낀 감정"
+> 토글 하나가 위 세 필드를 함께 덮는다.
 
 다음 항목은 레이아웃 설계를 막지 않지만 실제 API 연결 및 서비스 완료 전에 확정해야 한다.
 

@@ -1,0 +1,131 @@
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+ComplaintMissingField = Literal[
+    "incident",
+    "hurt_point",
+    "emotion",
+    "emotion_reason",
+    "expected_behavior",
+    "desired_outcome",
+]
+
+
+class ComplaintIncident(BaseModel):
+    description: str | None = None
+    facts: list[str] = Field(default_factory=list)
+    assumptions: list[str] = Field(default_factory=list)
+
+
+class ComplaintEmotion(BaseModel):
+    emotions: list[str] = Field(default_factory=list)
+    reason: str | None = None
+
+
+class ComplaintOptionalInfo(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    nickname_a: str | None = Field(default=None, alias="nicknameA")
+    nickname_b: str | None = Field(default=None, alias="nicknameB")
+    date: str | None = None
+    place: str | None = None
+    quotes: list[str] = Field(default_factory=list)
+    punishment_idea: str | None = Field(default=None, alias="punishmentIdea")
+
+
+class ComplaintConversationState(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    incident: ComplaintIncident = Field(default_factory=ComplaintIncident)
+    hurt_point: str | None = Field(default=None, alias="hurtPoint")
+    emotion: ComplaintEmotion = Field(default_factory=ComplaintEmotion)
+    expected_behavior: str | None = Field(default=None, alias="expectedBehavior")
+    desired_outcome: str | None = Field(default=None, alias="desiredOutcome")
+    optional: ComplaintOptionalInfo = Field(default_factory=ComplaintOptionalInfo)
+    confirmed_fields: list[ComplaintMissingField] = Field(
+        default_factory=list, alias="confirmedFields"
+    )
+    missing_fields: list[ComplaintMissingField] = Field(default_factory=list, alias="missingFields")
+    ready_to_generate: bool = Field(default=False, alias="readyToGenerate")
+
+
+class ComplaintAIExtracted(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    incident: ComplaintIncident = Field(default_factory=ComplaintIncident)
+    hurt_point: str | None = Field(default=None, alias="hurtPoint")
+    emotions: ComplaintEmotion = Field(default_factory=ComplaintEmotion)
+    expected_behavior: str | None = Field(default=None, alias="expectedBehavior")
+    desired_outcome: str | None = Field(default=None, alias="desiredOutcome")
+    optional: ComplaintOptionalInfo = Field(default_factory=ComplaintOptionalInfo)
+
+
+# 사용자가 공유하지 않기로 고른 항목에 들어가는 값. 빈 값과 구별해야 한다.
+NOT_SHARED = "공유하지 않은 내용"
+
+
+class SharedStatement(BaseModel):
+    """Finalized, share-selected card, never private conversation.
+
+    필드명은 DB `statement_cards` 컬럼과 1:1로 대응한다 (docs/API_Design.md §8-1).
+    alias를 두지 않아 요청·응답 모두 snake_case다.
+    """
+
+    # 아직 생성 주체가 없다. 대화 엔진이 추출하지 않으므로 항상 빈 값으로 들어온다.
+    # docs/API_Design.md §10-2 참고.
+    cute_charge: str = Field(default="", max_length=200)
+    incident_summary: str = Field(default="", max_length=8000)
+    different_viewpoint: str | None = Field(default=None, max_length=8000)
+
+    incident_description: str = Field(min_length=1, max_length=8000)
+    emotions: list[str] = Field(default_factory=list)
+    emotion_reason: str = Field(default="", max_length=8000)
+    hurt_point: str = Field(default="", max_length=8000)
+    desired_outcome: str = Field(min_length=1, max_length=8000)
+    expected_behavior: str = Field(default="", max_length=8000)
+    assumption: str = Field(default="", max_length=8000)
+
+    @field_validator(
+        "cute_charge",
+        "incident_summary",
+        "emotion_reason",
+        "hurt_point",
+        "expected_behavior",
+        "assumption",
+        mode="before",
+    )
+    @classmethod
+    def _null_is_empty(cls, value: object) -> object:
+        """DB의 NULL을 빈 문자열로 받는다.
+
+        해당 컬럼들은 nullable이므로 저장된 카드를 읽으면 None이 온다.
+        "값 없음"을 빈 문자열 하나로 통일해 프론트가 분기를 두 벌 두지 않게 한다.
+        """
+        return "" if value is None else value
+
+    def shared(self, value: str) -> bool:
+        """공유하지 않기로 한 항목과 빈 값을 함께 걸러낸다."""
+        return bool(value.strip()) and value != NOT_SHARED
+
+
+class ComplaintConversationRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    conversation_id: str = Field(default="temp", alias="conversationId")
+    message: str
+    state: ComplaintConversationState | None = None
+    side: Literal["A", "B"] = "A"
+    shared_statement: SharedStatement | None = Field(default=None, alias="sharedStatement")
+
+
+class ComplaintConversationResponse(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    conversation_id: str = Field(alias="conversationId")
+    state: ComplaintConversationState
+    extracted: ComplaintAIExtracted
+    assistant_message: str = Field(alias="assistantMessage")
+    missing_fields: list[ComplaintMissingField] = Field(alias="missingFields")
+    ready_to_generate: bool = Field(alias="readyToGenerate")
+    mode: Literal["openai", "local"] = "local"
