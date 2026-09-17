@@ -2,6 +2,9 @@ import json
 import unittest
 from unittest.mock import patch
 
+from fastapi.testclient import TestClient
+
+from app.main import app
 from app.schemas.card_summary import CardSummary, CardSummaryRequest
 from app.schemas.complaint import NOT_SHARED, SharedStatement
 from app.services.card_summary import generate_card_summary, ground_summary
@@ -102,3 +105,43 @@ class OpenAIModeTest(unittest.TestCase):
         )
         self.assertEqual(result.cute_charge, "")
         self.assertEqual(result.incident_summary, "요약")
+
+
+class CardSummaryApiTest(unittest.TestCase):
+    def setUp(self):
+        self.client = TestClient(app)
+
+    def test_local_response_is_not_cached(self):
+        with patch("app.services.card_summary.is_openai_configured", return_value=False):
+            response = self.client.post("/api/complaint/card-summary", json={"card": CARD})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers["cache-control"], "no-store")
+        self.assertEqual(
+            response.json(),
+            {
+                "mode": "local",
+                "cute_charge": "",
+                "incident_summary": "약속 시간에 연락 없이 한 시간 늦었다",
+            },
+        )
+
+    def test_provider_error_is_sanitized(self):
+        with patch(
+            "app.api.card_summary.generate_card_summary",
+            side_effect=RuntimeError("secret provider detail"),
+        ):
+            response = self.client.post("/api/complaint/card-summary", json={"card": CARD})
+        self.assertEqual(response.status_code, 502)
+        self.assertEqual(response.headers["cache-control"], "no-store")
+        self.assertNotIn("secret", response.text)
+        self.assertEqual(
+            response.json(), {"detail": "Card summary generation failed. Please retry."}
+        )
+
+    def test_invalid_input_is_not_echoed(self):
+        response = self.client.post(
+            "/api/complaint/card-summary",
+            json={"card": {"incident_description": {"private": "do not echo"}}},
+        )
+        self.assertEqual(response.status_code, 422)
+        self.assertNotIn("do not echo", response.text)
