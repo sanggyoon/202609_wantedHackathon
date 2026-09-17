@@ -2,10 +2,11 @@
 // 근거: docs/API_Design.md §8-1. 백엔드도 alias 없이 같은 snake_case를 쓴다.
 
 export type Statement = {
-  // cute_charge·incident_summary는 검토 화면(PreviewScreen)에서 생성하고 사용자가 고칠 수 있다.
+  // 아래 셋은 검토 화면(PreviewScreen)에서 생성하고 사용자가 고칠 수 있다.
   // different_viewpoint는 아직 생성 주체가 없다. docs/API_Design.md §10-2 참고.
   cute_charge?: string;
   incident_summary?: string;
+  story_intro?: string;
   different_viewpoint?: string | null;
 
   incident_description: string;
