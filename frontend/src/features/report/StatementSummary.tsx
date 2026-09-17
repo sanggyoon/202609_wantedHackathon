@@ -11,6 +11,9 @@ export function StatementSummary({ data }: { data: Statement }) {
   return (
     <section className="panel">
       <span className="badge">고소장 요약 · 신청인의 관점</span>
+      {data.cute_charge && (
+        <p className="cute-charge font-point">「{data.cute_charge}」</p>
+      )}
       {!data.sourceMode && (
         <p className="notice">현재는 화면 체험용 예시 사건입니다.</p>
       )}
