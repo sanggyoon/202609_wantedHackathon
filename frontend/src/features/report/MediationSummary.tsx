@@ -41,8 +41,8 @@ export function MediationSummary({ a, b }: { a: Statement; b: Statement }) {
   }
   return (
     <section className="panel">
-      <span className="badge">🌰 중재자의 정리 (판결 아님)</span>
-      <h2>두 사람을 위한, 중재자의 정리</h2>
+      <span className="badge">중재자의 정리 (판결 아님)</span>
+      <h2 className="text-primary">두 사람을 위한, 중재자의 정리</h2>
       {!result && (
         <>
           <Notice>
@@ -109,8 +109,10 @@ export function MediationSummary({ a, b }: { a: Statement; b: Statement }) {
             {result.report.possible_misunderstanding ||
               "지금 내용만으로는 판단하기 어려워요."}
           </p>
-          <h3>다음 대화의 시작 문장</h3>
-          <p>{result.report.conversation_starter}</p>
+          <h3 className="recommend-title text-primary">다음 대화의 시작 문장</h3>
+          <p className="recommend-desc">
+            {result.report.conversation_starter}
+          </p>
         </>
       )}
       <Notice>

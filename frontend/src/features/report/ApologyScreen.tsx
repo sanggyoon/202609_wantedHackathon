@@ -27,7 +27,7 @@ export function ApologyScreen({
       <Notice>신청인이 접수한 사건: {summary}</Notice>
       {preview ? (
         <div className="panel">
-          <span className="badge">🤝 화해 및 합의서</span>
+          <span className="badge">화해 및 합의서</span>
           {value.understood_point && (
             <>
               <h3>내가 이해한 상대의 마음</h3>

@@ -45,8 +45,12 @@ export function ShareSelectScreen({
         <p>밤톨이 정리한 내용을 골라, {doc}에 담아볼까요?</p>
       </div>
       <div className="panel">
-        <span className="badge">🌰 밤톨이 정리한 내용</span>
-        <h2>{doc}에 담아 공유하고 싶은 것만 선택해주세요.</h2>
+        <span className="badge">밤톨이 정리한 내용</span>
+        <h2>
+          {doc}에 담아 공유하고 싶은 것만
+          <br />
+          선택해주세요.
+        </h2>
         <ul className="select-list">
           {items.map((item) => (
             <li key={item.key}>
@@ -73,27 +77,36 @@ export function ShareSelectScreen({
             : "가상 사건의 항목입니다. 실제 링크 공유는 아직 연결되지 않았어요."}
         </Notice>
       </div>
-      <Button
-        disabled={count === 0}
-        onClick={() =>
-          onComplete({
-            ...data,
-            incident_description: selected.incident
-              ? data.incident_description
-              : NOT_SHARED,
-            emotions: selected.feeling ? data.emotions : [],
-            emotion_reason: selected.feeling ? data.emotion_reason : NOT_SHARED,
-            hurt_point: selected.feeling ? data.hurt_point : "",
-            desired_outcome: selected.wish ? data.desired_outcome : NOT_SHARED,
-            expected_behavior: selected.expectation
-              ? data.expected_behavior
-              : "",
-            assumption: selected.guess ? data.assumption : "",
-          })
-        }
-      >
-        선택한 내용으로 {doc} 만들기 → ({count})
-      </Button>
+      <div className="cta-float-spacer" aria-hidden="true" />
+      <div className="cta-float">
+        <div className="cta-float-inner">
+          <Button
+            disabled={count === 0}
+            onClick={() =>
+              onComplete({
+                ...data,
+                incident_description: selected.incident
+                  ? data.incident_description
+                  : NOT_SHARED,
+                emotions: selected.feeling ? data.emotions : [],
+                emotion_reason: selected.feeling
+                  ? data.emotion_reason
+                  : NOT_SHARED,
+                hurt_point: selected.feeling ? data.hurt_point : "",
+                desired_outcome: selected.wish
+                  ? data.desired_outcome
+                  : NOT_SHARED,
+                expected_behavior: selected.expectation
+                  ? data.expected_behavior
+                  : "",
+                assumption: selected.guess ? data.assumption : "",
+              })
+            }
+          >
+            선택한 내용으로 {doc} 만들기 → ({count})
+          </Button>
+        </div>
+      </div>
     </>
   );
 }

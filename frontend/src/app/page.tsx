@@ -5,7 +5,7 @@ export default function Home() {
   return (
     <AppShell>
       <section className="hero">
-        <div className="paper doc" aria-hidden="true">
+        <div className="paper doc font-point" aria-hidden="true">
           고소장
         </div>
         <small>

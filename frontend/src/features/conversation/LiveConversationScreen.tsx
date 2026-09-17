@@ -1,4 +1,5 @@
 "use client";
+import { useEffect, useRef } from "react";
 import { Button, Heading, Notice } from "@/components/ui";
 import type { Statement } from "@/features/report/types";
 import { useConversation } from "./useConversation";
@@ -12,6 +13,15 @@ export function LiveConversationScreen({
   onComplete: (value: Statement) => void;
 }) {
   const chat = useConversation(side, sharedStatement);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    const maxHeight = parseFloat(getComputedStyle(el).maxHeight);
+    el.style.overflowY = el.scrollHeight > maxHeight ? "auto" : "hidden";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [chat.input]);
   const state = chat.latest?.state;
   return (
     <>
@@ -109,6 +119,7 @@ export function LiveConversationScreen({
             <Notice>수정한 답변 이후의 대화는 다시 이어갑니다.</Notice>
           )}
           <textarea
+            ref={textareaRef}
             id="live-answer"
             rows={3}
             maxLength={8000}

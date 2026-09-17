@@ -1,5 +1,13 @@
 @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css");
 @import "tailwindcss";
+@font-face {
+  font-family: "BMkkubulim";
+  src: url("https://cdn.jsdelivr.net/gh/projectnoonnu/2410-1@1.0/BMkkubulimTTF-Regular.woff2")
+    format("woff2");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
 :root {
   --primary: #0e5748;
   --text: #28272a;
@@ -100,6 +108,13 @@ header > a {
   align-items: center;
   gap: 6px;
 }
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
 .badge {
   display: inline-block;
   font-size: 11px;
@@ -111,13 +126,18 @@ header > a {
 }
 .hero {
   text-align: center;
-  padding: 64px 0 40px;
+  padding: 16px 0 40px;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   justify-items: center;
   gap: 24px;
 }
 .hero h1 {
-  font-size: 40px;
+  font-size: 28px;
+}
+.hero > small:first-of-type {
+  color: var(--primary);
+  font-size: 14px;
 }
 .hero p,
 .heading p {
@@ -126,8 +146,8 @@ header > a {
 .paper {
   display: grid;
   place-items: center;
-  width: 108px;
-  height: 124px;
+  width: 160px;
+  height: 184px;
   background: white;
   border: 1px solid var(--border);
   border-radius: 16px;
@@ -136,10 +156,61 @@ header > a {
   box-shadow: 8px 8px 0 #e7e5e2;
 }
 .paper.doc {
-  font-size: 22px;
-  font-weight: 700;
-  letter-spacing: 4px;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 240 / 294;
+  transform: none;
+  font-size: 30px;
+  font-weight: 400;
+  letter-spacing: 0.025em;
   color: var(--text);
+}
+.paper.doc-image {
+  width: 100%;
+  height: auto;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  transform: none;
+}
+.paper-image {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 32px;
+}
+.paper-duo-viewport {
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  overflow: hidden;
+}
+.paper-duo {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  cursor: grab;
+  touch-action: pan-y;
+}
+.paper-duo:active {
+  cursor: grabbing;
+}
+.paper-duo .doc-half {
+  flex: 0 0 auto;
+  width: min(360px, calc(100vw - 32px));
+  aspect-ratio: 745 / 915;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text);
+}
+.paper-duo .doc-half.plaintiff {
+  background: #8fe0da;
+}
+.paper-duo .doc-half.defendant {
+  background: #f0c294;
 }
 .button {
   border: 1px solid var(--primary);
@@ -204,6 +275,39 @@ body.chat-open .screen > .notice {
   flex-wrap: wrap;
   font-size: 12px;
 }
+.dev-tabs-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.dev-tabs-group > small {
+  white-space: nowrap;
+  font-size: 10px;
+}
+.dev-tabs {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px dashed #aaaab4;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+.dev-tabs button {
+  min-height: 28px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  font-size: 11px;
+  white-space: nowrap;
+  color: var(--muted);
+  cursor: pointer;
+}
+.dev-tabs button.active {
+  background: var(--primary);
+  color: white;
+}
 .review select {
   background: white;
   min-height: 48px;
@@ -232,8 +336,9 @@ body.chat-open .screen > .notice {
   padding: 24px 8px;
 }
 .chat-empty-title {
-  font-size: 20px;
+  font-size: 36px;
   font-weight: 700;
+  color: var(--primary);
 }
 .chat-empty-desc {
   font-size: 13px;
@@ -255,8 +360,33 @@ body.chat-open .screen > .notice {
 .card {
   border-top: 4px solid #beb2a8;
 }
+.side-A {
+  border-top: 1px solid var(--border);
+}
 .side-B {
-  border-top-color: #aaaac8;
+  border-top: 1px solid var(--border);
+}
+.card-mine {
+  position: relative;
+  border: 2px solid var(--primary);
+  background: #f2f8f6;
+}
+.text-primary {
+  color: var(--primary);
+}
+.recommend-title {
+  font-size: 18px;
+}
+.recommend-desc {
+  font-size: 16px;
+}
+.card-mine-badge {
+  display: block;
+  width: fit-content;
+  margin-bottom: 12px;
+  border-color: var(--primary);
+  color: var(--primary);
+  background: white;
 }
 .card details {
   border-top: 1px dashed var(--border);
@@ -275,6 +405,15 @@ body.chat-open .screen > .notice {
   color: var(--muted);
   font-size: 14px;
 }
+.toggle-row {
+  display: flex;
+  justify-content: center;
+  margin-top: 24px;
+}
+.toggle-row .button {
+  width: auto;
+  padding: 12px 32px;
+}
 .actions {
   display: flex;
   gap: 12px;
@@ -282,6 +421,78 @@ body.chat-open .screen > .notice {
 .actions > * {
   flex: 1;
   min-width: 0;
+}
+.actions .action-minor {
+  flex: 0.6;
+}
+.actions .action-major {
+  flex: 1.5;
+}
+.cta-float {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  display: flex;
+  justify-content: center;
+  padding: 40px 16px calc(32px + env(safe-area-inset-bottom));
+  background: linear-gradient(to top, #f0efee 45%, #f0efee00);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  pointer-events: none;
+}
+.cta-float > * {
+  pointer-events: auto;
+}
+.cta-float-inner {
+  width: 100%;
+  max-width: 768px;
+  display: flex;
+  gap: 12px;
+}
+.cta-float-inner > * {
+  flex: 1;
+  min-width: 0;
+}
+.cta-float-inner .button {
+  padding: 18px 24px;
+}
+.cta-float-inner-auto {
+  justify-content: center;
+}
+.cta-float-inner-auto > * {
+  flex: none;
+  width: auto;
+}
+.cta-float-spacer {
+  height: 128px;
+}
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(32px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 200;
+  background: var(--text);
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 12px 20px;
+  border-radius: 999px;
+  box-shadow: 0 8px 20px #00000026;
+  white-space: nowrap;
+  animation: toast-in 0.2s ease-out;
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
 }
 .notice {
   background: #eae9e680;
@@ -302,9 +513,33 @@ body.chat-open .screen > .notice {
 .doc-title {
   text-align: center;
   font-size: 30px;
-  font-weight: 700;
-  letter-spacing: 4px;
+  font-weight: 400;
+  letter-spacing: 0.025em;
   margin: 4px 0 0;
+}
+.apology-icon {
+  display: block;
+  width: clamp(64px, 25vw, 120px);
+  height: clamp(64px, 25vw, 120px);
+  margin: 0 auto;
+}
+.font-kkubulim {
+  font-family: "BMkkubulim", sans-serif;
+  font-weight: 550;
+  font-size: 16px;
+  letter-spacing: 0.025em;
+}
+.font-kkubulim-lg {
+  font-size: clamp(1.4375rem, 1.26rem + 0.76vw, 1.625rem);
+}
+.brand-title {
+  letter-spacing: -0.02em;
+  font-size: 1.125rem;
+}
+.font-point {
+  font-family: "BMkkubulim", sans-serif;
+  font-weight: 400;
+  letter-spacing: 0.025em;
 }
 .doc-case {
   text-align: center;
@@ -427,7 +662,7 @@ select:focus {
 }
 .reply p {
   text-align: left;
-  background: #f0efee;
+  background: #dcf0e8;
   color: var(--text);
   font-size: 16px;
   font-weight: 600;
@@ -443,13 +678,18 @@ select:focus {
 }
 .composer {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   gap: 8px;
   background: #ffffff;
-  border: 2px solid #f8f8f8;
+  border: 1px solid #f8f8f8;
   padding: 8px;
   border-radius: 28px;
   padding-bottom: calc(8px + env(safe-area-inset-bottom));
+  transition: border-color 0.15s ease;
+}
+.composer:focus-within {
+  border-color: #e5e7eb;
+  box-shadow: 0 4px 16px #d8d6d2;
 }
 /* 채팅 UI의 입력창은 화면 맨 아래에 고정한다. 모바일에서는 키보드가 열리면
    sticky 특성상 자연스럽게 키보드 위로 밀려 올라간다. */
@@ -471,6 +711,7 @@ select:focus {
   border-radius: 0;
   resize: none;
   max-height: 120px;
+  overflow-y: hidden;
   padding: 12px 14px;
 }
 .composer textarea:focus {
@@ -490,7 +731,8 @@ select:focus {
   place-items: center;
 }
 .composer .send:disabled {
-  opacity: 0.4;
+  opacity: 1;
+  background: #6b7280;
   cursor: not-allowed;
 }
 .composer .send:hover:not(:disabled) {
@@ -521,6 +763,9 @@ select:focus {
   }
   .heading h1 {
     font-size: 36px;
+  }
+  .hero h1 {
+    font-size: 40px;
   }
   .screen {
     padding-top: 40px;

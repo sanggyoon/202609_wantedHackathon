@@ -82,12 +82,12 @@ font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFon
 
 - 공식 다운로드: [woowahan.com/fonts](https://www.woowahan.com/fonts)
 - 라이선스: OFL — 개인·상업적 사용 무료
-- 눈누 CDN: [noonnu.cc](https://noonnu.cc/font_page/10)
+- 눈누 CDN: [noonnu.cc](https://noonnu.cc/font_page/1500)
 
 ```css
 @font-face {
   font-family: 'BMkkubulim';
-  src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_one@1.0/BMkkubulim.woff') format('woff');
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2410-1@1.0/BMkkubulimTTF-Regular.woff2') format('woff2');
   font-weight: normal;
   font-style: normal;
 }
@@ -109,7 +109,7 @@ font-family: 'BMkkubulim', sans-serif;
 
 | 스타일 | 크기 | 용도 예시 |
 |--------|------|-----------|
-| H1 | 40px | 메인 헤딩 |
+| H1 | 34px (420px 이하) / 36px (모바일) / 40px (태블릿 이상) | 메인 헤딩 |
 | H2 | 36px | 섹션 제목 |
 | H3 | 24px | 서브 제목 |
 | H4 | 20px | 카드 제목, 강조 본문 |
