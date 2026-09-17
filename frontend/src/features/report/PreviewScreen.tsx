@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Button, Heading, Notice } from "@/components/ui";
 import { CARD_SUMMARY_FAILED, requestCardSummary } from "@/lib/api/cardSummary";
 import { StatementCard } from "./StatementCard";
@@ -14,12 +14,16 @@ export function PreviewScreen({
   side,
   initial,
   onConfirm,
-  submitDisabled = false,
+  busy = false,
+  submitLabel,
+  notice,
 }: {
   side: "A" | "B";
   initial: Statement;
   onConfirm: (value: Statement) => void;
-  submitDisabled?: boolean;
+  busy?: boolean;
+  submitLabel?: string;
+  notice?: ReactNode;
 }) {
   const [value, setValue] = useState(initial);
   const [edit, setEdit] = useState(false);
@@ -98,6 +102,7 @@ export function PreviewScreen({
         <StatementCard side={side} data={value} chargePending={pending} />
       )}
       {failed && <Notice>{CARD_SUMMARY_FAILED}</Notice>}
+      {notice}
       <div className="actions">
         <Button secondary onClick={() => setEdit(!edit)}>
           {edit ? "미리보기" : "내용 수정"}
@@ -116,13 +121,13 @@ export function PreviewScreen({
         )}
         <Button
           disabled={
-            submitDisabled ||
+            busy ||
             pending ||
             [value.incident_description, value.desired_outcome].some((v) => !v.trim())
           }
           onClick={() => onConfirm(value)}
         >
-          {submitDisabled ? "고소장 저장 기능 준비 중" : side === "A" ? "고소장 접수하기" : "맞고소장 제출하기"}
+          {submitLabel ?? (side === "A" ? "고소장 접수하기" : "맞고소장 제출하기")}
         </Button>
       </div>
     </>
