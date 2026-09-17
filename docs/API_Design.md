@@ -37,16 +37,19 @@ backend/app/
   main.py                      FastAPI 앱, CORS, 422 핸들러
   api/health.py                GET  /api/health
   api/cases.py                 POST /api/cases, GET /api/cases/{token}
+  api/card_summary.py          POST /api/complaint/card-summary
   api/conversation.py          POST /api/complaint/conversation/message
   api/mediation.py             POST /api/mediation/report
   db.py                        지연 생성 커넥션 풀
   core/tokens.py               토큰 발급·해시·상수시간 비교
   repositories/cases.py        사건 영속 계층 (SQL은 여기에만)
   schemas/case.py              사건 뷰 모델, available_actions 표
+  schemas/card_summary.py      카드 요약(죄명·한 줄 요약) 모델
   schemas/complaint.py         대화 상태·요청·응답 모델
   schemas/mediation.py         리포트 모델
   services/complaint_engine.py 대화 처리 (1,125줄)
   services/mediation.py        리포트 생성
+  services/card_summary.py     죄명·한 줄 요약 생성과 형식 검증
   services/openai_gateway.py   OpenAI 호출
   services/bamtol_voice.py     페르소나 문구
   services/emotion_evidence.py 감정 근거 추출
@@ -56,6 +59,7 @@ backend/app/
 | --- | --- |
 | AI 대화 | **구현됨** — §4 |
 | 맞고소 리포트 생성 | **구현됨** — §5 |
+| 카드 죄명·한 줄 요약 생성 | **구현됨** — §8-1 |
 | 사건 작성 시작 / 조회 | **구현됨** — §6 |
 | 고소장 확정 (영속 저장) | **구현됨** — §6 |
 | 응답 방식 선택 | **구현됨** — §6 |
@@ -412,8 +416,8 @@ DB를 기준으로 삼는 이유는 두 가지다. PRD §11 데이터 구조 초
 | `desired_outcome` | string (필수) | `wish` | |
 | `expected_behavior` | string | `expectation` | DB 컬럼 추가함 |
 | `assumption` | string | `guess` | DB 컬럼 추가함 |
-| `cute_charge` | string | — | 항상 `""` — 생성 주체 없음 (§10-2) |
-| `incident_summary` | string | — | 항상 `""` — 생성 주체 없음 (§10-2) |
+| `cute_charge` | string | — | 검토 화면에서 생성, 사용자 수정 가능. 형식 위반·local 모드는 `""` |
+| `incident_summary` | string | — | 검토 화면에서 생성, 사용자 수정 가능. 사건 내용 미공유 시 `""` |
 | `different_viewpoint` | string \| null | — | 항상 `null` — 생성 주체 없음 (§10-2) |
 
 #### "DB 기준"이 컬럼 추가를 포함하는 이유
@@ -462,12 +466,28 @@ alter table apologies       add column admitted_point    text;
 `emotion_reason` 셋을 합쳐 넣고 있었는데, DB에 `hurt_point`가 없어 그대로 두면 데이터가
 버려진다. `expectation`·`guess`와 같은 성격이라 함께 흡수했다.
 
-#### 아직 만들지 못하는 세 필드
+#### 죄명·한 줄 요약 생성 — **구현됨 (2026-09-17)**
 
-`cute_charge`·`incident_summary`·`different_viewpoint`는 **어디에서도 생성되지 않는다.**
-`complaint_engine`이 추출하는 항목에 없다. 카드를 저장하려면 대화 엔진이 이 셋을 만들도록
-확장해야 한다. 그때까지는 `cute_charge`·`incident_summary`를 nullable로 두거나 저장
-시점에 별도 LLM 호출로 생성하는 방식 중 하나를 택해야 한다 — §10-2.
+`POST /api/complaint/card-summary`가 **공유 항목 선택이 끝난 카드**로 `cute_charge`와
+`incident_summary`를 만든다. 서버는 저장하지 않는다. 검토 화면(`PreviewScreen`) 진입 시 1회
+호출하고, 사용자가 확인·수정한 뒤 접수한다. 설계: `docs/superpowers/specs/2026-09-17-card-summary-design.md`.
+
+```jsonc
+// 요청
+{ "card": { /* SharedStatement */ } }
+// 200
+{ "mode": "openai", "cute_charge": "연락두절죄", "incident_summary": "약속 시간에 연락 없이 늦었다" }
+```
+
+- 대화 엔진이 아니라 공유 선택 **이후**에 만드는 이유: 사용자가 공유하지 않기로 뺀 추측·감정이
+  죄명·요약에 섞이지 않게 하기 위해서다.
+- 코드가 형식을 한 번 더 막는다. 죄명은 "죄"로 끝나는 2~12자, 요약은 60자 이내. 벗어나면
+  자르지 않고 `""`로 비운다. 사건 내용이 `"공유하지 않은 내용"`이면 요약은 항상 `""`.
+- local 모드: 요약은 사건 내용 첫 문장, 죄명은 `""`.
+- 실패 시 502 `{"detail": "Card summary generation failed. Please retry."}`. 접수는 막지 않는다.
+
+`different_viewpoint`는 **아직 생성하지 않는다.** A 카드만 있는 시점에 채우려면 상대 관점을
+추측해야 하고 PRD §13과 부딪힌다 (§10-2).
 
 ### 8-2. 네이밍 규칙이 엔드포인트마다 다르다 — **코드 수정 권장**
 
@@ -532,7 +552,7 @@ DFD §9의 검수 항목 중 **구현이 책임지는 것**들이다. 상당수�
 | # | 항목 | 정해야 할 시점 |
 | --- | --- | --- |
 | 1 | 접근 로그의 `public_token` 마스킹 (Nginx `log_format`) | **배포 전 — 이제 실제로 토큰이 경로에 실린다** |
-| 2 | `cute_charge`·`incident_summary`·`different_viewpoint`를 누가 생성할지 (§8-1) | 카드 저장 구현 전 |
+| 2 | `different_viewpoint` 생성 방식 — 상대 관점 추측 없이 만들 수 있는지 (§8-1). ~~죄명·요약~~ → 구현됨 | 링크 흐름 완성 후 |
 | 3 | ~~오류 응답 형식 통일~~ → `{detail}` 유지로 결정 (§8-3) | 해소됨 |
 | 4 | 대화 상태의 네이밍 규칙 (§8-2) — 카드는 해소됨 | 낮음 (DB 미저장 구조) |
 | 5 | 동기 응답이 Nginx·브라우저 타임아웃 안에 드는지 실측 | 맞고소 경로 연결 시 |

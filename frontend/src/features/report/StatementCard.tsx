@@ -3,11 +3,13 @@ export function StatementCard({
   side,
   data,
   mine = false,
+  chargePending = false,
 }: {
   side: "A" | "B";
   data: Statement;
   mine?: boolean;
   saved?: boolean;
+  chargePending?: boolean;
 }) {
   const other = side === "A" ? "B" : "A";
   const title =
@@ -17,6 +19,15 @@ export function StatementCard({
       {mine && <span className="badge card-mine-badge">내가 쓴 고소장</span>}
       <h2 className="doc-title font-point">고 소 장</h2>
       <p className="doc-case">CASE #0241</p>
+      {chargePending ? (
+        <p className="cute-charge" role="status">
+          밤톨이 죄명을 짓고 있어요…
+        </p>
+      ) : (
+        data.cute_charge && (
+          <p className="cute-charge font-point">「{data.cute_charge}」</p>
+        )
+      )}
       <h3>사건명</h3>
       <h2>「{title}」</h2>
       <h3>신청인 · 상대방</h3>
