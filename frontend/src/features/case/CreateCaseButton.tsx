@@ -18,7 +18,7 @@ export function CreateCaseButton() {
     setBusy(true);
     setError("");
     try {
-      try { checkWriterStorage(); } catch { throw new Error("브라우저의 탭 저장소를 사용할 수 없어요. 저장소 허용 후 다시 시도해주세요."); }
+      try { checkWriterStorage(); } catch { throw new Error("브라우저 저장소를 사용할 수 없어요. 저장소 허용 후 다시 시도해주세요."); }
       // Retry storage/navigation with the same issued credentials, not a second case.
       const value = created.current ?? await createCase(controller.signal);
       created.current = value;
@@ -34,7 +34,6 @@ export function CreateCaseButton() {
   return <>
     <Button disabled={busy} onClick={() => void start()}>{busy ? "사건을 준비하고 있어요…" : "시작하기 ↗"}</Button>
     {error && <p role="alert">{error} 응답을 받기 전에 연결이 끊겼다면 빈 사건이 생성됐을 수 있어요. 자동으로 재요청하지 않습니다.</p>}
-    <Notice>사건 번호와 작성 권한만 발급됩니다. 고소장 저장·전송은 아직 준비 중이에요.</Notice>
-    <Notice>작성 권한은 이 탭에 보관돼요. 새로고침에는 유지되지만 탭을 닫거나 다른 기기로 이동하면 복구되지 않을 수 있어요. 대화는 저장하지 않아요.</Notice>
+    <Notice>작성 권한은 이 브라우저에 보관돼요. 다른 기기에서는 작성자로 인식되지 않아요. 대화는 저장하지 않아요.</Notice>
   </>;
 }

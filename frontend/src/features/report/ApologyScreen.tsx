@@ -1,13 +1,21 @@
 "use client";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Button, Heading, Notice } from "@/components/ui";
 import type { Apology } from "./types";
 export function ApologyScreen({
   summary,
   onSubmit,
+  busy = false,
+  submitLabel = "사과문 보내기 (체험)",
+  notice,
+  demo = true,
 }: {
   summary: string;
   onSubmit: (value: Apology) => void;
+  busy?: boolean;
+  submitLabel?: string;
+  notice?: ReactNode;
+  demo?: boolean;
 }) {
   const [value, setValue] = useState<Apology>({
     body: "",
@@ -87,17 +95,19 @@ export function ApologyScreen({
           ))}
         </div>
       )}
+      {notice}
       <div className="actions">
         <Button secondary onClick={() => setPreview(!preview)}>
           {preview ? "수정하기" : "미리보기"}
         </Button>
-        <Button disabled={!value.body.trim()} onClick={() => onSubmit(value)}>
-          사과문 보내기 (체험)
+        <Button disabled={busy || !value.body.trim()} onClick={() => onSubmit(value)}>
+          {submitLabel}
         </Button>
       </div>
       <Notice>
         사과문 본문만 필수예요. 제출은 답변 작성의 종료를 뜻하며 상대가 사과를
-        받아들였다는 뜻은 아니에요. 실제 전송·저장은 아직 연결되지 않았어요.
+        받아들였다는 뜻은 아니에요.
+        {demo && " 실제 전송·저장은 아직 연결되지 않았어요."}
       </Notice>
     </>
   );

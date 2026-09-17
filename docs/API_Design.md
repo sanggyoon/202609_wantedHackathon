@@ -75,7 +75,8 @@ Supabase Transaction pooler(PgBouncer)는 prepared statement를 세션 간에 �
 **2026-09-16 기준 프로덕션에서 전 경로가 동작한다.** 실제 LLM(`mode: "openai"`)이 붙어
 있고 DB 읽기·쓰기가 확인됐다. 배포 환경변수 배선 경위는 `Tech_ADR.md` §11 참고.
 
-프론트는 아직 AI 두 엔드포인트에만 연결돼 있다. 사건 계층(링크)은 미연결이다. `Frontend_Architecture.md` §9가 요구한
+프론트는 AI 엔드포인트와 사건 계층 전체(생성·조회·`statement`·`response-type`·`apology`)에
+연결돼 있다 (2026-09-17, `docs/Case_Link_Integration.md`). `Frontend_Architecture.md` §9가 요구한
 어댑터 계층이 `frontend/src/lib/api/{conversation,mediation}.ts`로 존재하고,
 `useConversation.ts`와 `MediationSummary.tsx`가 이를 통해 호출한다. 화면 컴포넌트가
 직접 `fetch`를 쓰지 않는다는 규칙이 지켜지고 있다.

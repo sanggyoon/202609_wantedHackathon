@@ -50,10 +50,17 @@ export type ResultEnding = "apology" | "counterclaim";
 export function StartScreen({
   entryMode = "new",
   resultTab = "apology",
+  notice = (
+    <>
+      판결문(결과물)은 <strong>7일 후 파기</strong>돼요. 지금은 저장·공유되지
+      않는 와이어프레임 체험입니다.
+    </>
+  ),
   onStart,
 }: {
   entryMode?: EntryMode;
   resultTab?: ResultEnding;
+  notice?: ReactNode;
   onStart: (ending?: ResultEnding) => void;
 }) {
   const c = copy[entryMode];
@@ -112,10 +119,7 @@ export function StartScreen({
           </p>
         </div>
       )}
-      <p className="notice">
-        판결문(결과물)은 <strong>7일 후 파기</strong>돼요. 지금은 저장·공유되지
-        않는 와이어프레임 체험입니다.
-      </p>
+      <p className="notice">{notice}</p>
       {entryMode !== "result" && (
         <>
           <div className="cta-float-spacer" aria-hidden="true" />

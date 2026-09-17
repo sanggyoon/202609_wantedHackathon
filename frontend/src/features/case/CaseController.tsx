@@ -6,11 +6,16 @@ import { ShareSelectScreen } from "./ShareSelectScreen";
 import { StatementSummary } from "@/features/report/StatementSummary";
 import { Button, Heading, Notice, Toast } from "@/components/ui";
 import { ConversationScreen } from "@/features/conversation/ConversationScreen";
-import { StatementCard } from "@/features/report/StatementCard";
 import { PreviewScreen } from "@/features/report/PreviewScreen";
 import { ApologyScreen } from "@/features/report/ApologyScreen";
 import { MediationSummary } from "@/features/report/MediationSummary";
 import type { Statement, Apology, EntryMode } from "@/features/report/types";
+import { ApologyResult } from "./screens/ApologyResult";
+import { CaseGoneScreen } from "./screens/CaseGoneScreen";
+import { CounterclaimResult } from "./screens/CounterclaimResult";
+import { SummonsArrivedScreen } from "./screens/SummonsArrivedScreen";
+import { SummonsSentScreen } from "./screens/SummonsSentScreen";
+import { WaitingScreen } from "./screens/WaitingScreen";
 const entryModes = ["new", "invited", "result"] as const;
 const screens = [
   "사건 접수",
@@ -68,66 +73,24 @@ export function CaseController({
     toastTimer.current = window.setTimeout(() => setToast(null), 2000);
   };
   const counterclaimResultContent = (
-    <>
-      <Heading label="양측 진술 대질" title="다른 마음을, 나란히.">
-        두 분이 각자 무엇을 바랐는지, 제가 곁에서 함께 짚어드릴게요.
-      </Heading>
-      <div className="report-grid">
-        <StatementCard side="A" data={a} />
-        <StatementCard side="B" data={b} mine />
-      </div>
-      <MediationSummary a={a} b={b} />
-    </>
+    <CounterclaimResult
+      a={a}
+      b={b}
+      mine="B"
+      report={<MediationSummary a={a} b={b} />}
+    />
   );
   const apologyResultContent = (
-    <>
-      <Heading label="심리 종결 · 화해 성립" title="미안한 마음이 도착했어요.">
-        여기까지 오느라 고생 많았어요. 두 분의 이야기를 천천히 읽어봐요.
-      </Heading>
+    <ApologyResult complaint={a} apology={apology}>
+      <p>
+        B의 사과문 작성이 끝났어요. 위 카드에는 직접 적은 내용만 담았고,
+        AI가 사과나 약속을 추가하지 않았어요.
+      </p>
       <Notice>
-        신청인(A)의 사건: {a.incident_summary || a.incident_description}
+        현재 브라우저 안의 체험 결과예요. 실제 상대에게 전송되거나 DB에
+        저장되지는 않았어요.
       </Notice>
-      <article className="card side-B">
-        <img src="/images/apple.png" alt="" className="apology-icon" />
-        <h2 className="doc-title">사 과 문</h2>
-        <p className="doc-case">마음을 담아 보내요.</p>
-        {apology.understood_point && (
-          <>
-            <h3>내가 이해한 상대의 마음</h3>
-            <p>{apology.understood_point}</p>
-          </>
-        )}
-        {apology.admitted_point && (
-          <>
-            <h3>내가 인정하는 부분</h3>
-            <p>{apology.admitted_point}</p>
-          </>
-        )}
-        <h3>상대에게 전하는 사과</h3>
-        <p>{apology.body}</p>
-        {apology.future_commitment && (
-          <>
-            <h3>다음에는 이렇게 할게</h3>
-            <p>{apology.future_commitment}</p>
-          </>
-        )}
-      </article>
-      <section className="panel">
-        <h2>사건 종결</h2>
-        <p>
-          B의 사과문 작성이 끝났어요. 위 카드에는 직접 적은 내용만 담았고,
-          AI가 사과나 약속을 추가하지 않았어요.
-        </p>
-        <Notice>
-          현재 브라우저 안의 체험 결과예요. 실제 상대에게 전송되거나 DB에
-          저장되지는 않았어요.
-        </Notice>
-      </section>
-      <Notice>
-        ‘화해 성립’은 답변이 끝났다는 뜻이에요. 사과를 꼭 받아들여야 한다는
-        의미는 아니니, 마음은 두 분의 속도대로 나아가면 돼요.
-      </Notice>
-    </>
+    </ApologyResult>
   );
   let content;
   switch (screen) {
@@ -216,101 +179,61 @@ export function CaseController({
     }
     case "소환장 발송":
       content = (
-        <>
-          <Heading
-            label="소환장, 준비됐어요"
-            title="이제 상대의 마음을 기다려볼까요?"
-          >
-            이 링크 하나로, 두 분의 이야기가 나란히 이어질 거예요.
-          </Heading>
-          <StatementCard side="A" data={a} />
-          <div className="panel">
-            <h2>소환장</h2>
-            <p className="placeholder">/case/〈사건 링크가 표시될 자리〉</p>
-            <Notice>실제 링크 발급·공유는 API 연결 후 제공됩니다.</Notice>
-            <div className="actions">
-              <Button onClick={() => showToast("링크 복사됨")}>
-                소환장 링크 복사
-              </Button>
-              <Button secondary disabled>
-                공유하기
-              </Button>
-            </div>
-            <Notice>
-              상대의 답변을 기다리는 중 · 판결문은 7일간 보관돼요 (기준 시각
-              미정)
-            </Notice>
-            <Button onClick={() => setScreen("소환장 도착")}>
-              피고가 받는 화면 체험하기 →
+        <SummonsSentScreen side="A" card={a}>
+          <p className="placeholder">/case/〈사건 링크가 표시될 자리〉</p>
+          <Notice>실제 링크 발급·공유는 API 연결 후 제공됩니다.</Notice>
+          <div className="actions">
+            <Button onClick={() => showToast("링크 복사됨")}>
+              소환장 링크 복사
+            </Button>
+            <Button secondary disabled>
+              공유하기
             </Button>
           </div>
-        </>
+          <Notice>
+            상대의 답변을 기다리는 중 · 판결문은 7일간 보관돼요 (기준 시각
+            미정)
+          </Notice>
+          <Button onClick={() => setScreen("소환장 도착")}>
+            피고가 받는 화면 체험하기 →
+          </Button>
+        </SummonsSentScreen>
       );
       break;
     case "맞고소장 발송":
       content = (
-        <>
-          <Heading
-            label="맞고소장, 준비됐어요"
-            title="이제 상대의 마음을 기다려볼까요?"
-          >
-            이 링크 하나로, 두 분의 이야기가 나란히 이어질 거예요.
-          </Heading>
-          <StatementCard side="B" data={b} />
-          <div className="panel">
-            <h2>맞고소장</h2>
-            <p className="placeholder">/case/〈사건 링크가 표시될 자리〉</p>
-            <Notice>실제 링크 발급·공유는 API 연결 후 제공됩니다.</Notice>
-            <div className="actions">
-              <Button onClick={() => showToast("링크 복사됨")}>
-                맞고소장 링크 복사
-              </Button>
-              <Button secondary disabled>
-                공유하기
-              </Button>
-            </div>
-            <Notice>
-              상대의 답변을 기다리는 중 · 판결문은 7일간 보관돼요 (기준 시각 미정)
-            </Notice>
-            <Button
-              onClick={() => {
-                setEntryMode("result");
-                setScreen("사건 접수");
-              }}
-            >
-              원고가 받는 화면 체험하기 →
+        <SummonsSentScreen side="B" card={b}>
+          <p className="placeholder">/case/〈사건 링크가 표시될 자리〉</p>
+          <Notice>실제 링크 발급·공유는 API 연결 후 제공됩니다.</Notice>
+          <div className="actions">
+            <Button onClick={() => showToast("링크 복사됨")}>
+              맞고소장 링크 복사
+            </Button>
+            <Button secondary disabled>
+              공유하기
             </Button>
           </div>
-        </>
+          <Notice>
+            상대의 답변을 기다리는 중 · 판결문은 7일간 보관돼요 (기준 시각 미정)
+          </Notice>
+          <Button
+            onClick={() => {
+              setEntryMode("result");
+              setScreen("사건 접수");
+            }}
+          >
+            원고가 받는 화면 체험하기 →
+          </Button>
+        </SummonsSentScreen>
       );
       break;
     case "소환장 도착":
       content = (
-        <>
-          <Heading label="당신에게 소환장이 도착했어요" title="조금 서운했대요.">
-            너무 걱정 말아요. 먼저 마음을 읽어보고,{"\n"}당신의 이야기도 들려주면 돼요.
-          </Heading>
-          <StatementSummary data={a} />
-          <div className="actions">
-            <Button
-              className="action-minor font-kkubulim"
-              onClick={() => setScreen("사과문 작성")}
-            >
-              내가 미안
-            </Button>
-            <Button
-              secondary
-              className="action-major font-kkubulim font-kkubulim-lg"
-              onClick={() => setScreen("피고 진술")}
-            >
-              나도 할 말 있음
-            </Button>
-          </div>
-          <Notice>
-            어떤 걸 선택해도 괜찮아요. 저는 누가 옳은지 가리려는 게 아니라, 두
-            분이 다시 이야기 나누길 바랄 뿐이에요.
-          </Notice>
-        </>
+        <SummonsArrivedScreen
+          complaint={a}
+          onApologize={() => setScreen("사과문 작성")}
+          onCounter={() => setScreen("피고 진술")}
+        />
       );
       break;
     case "양측 대질":
@@ -332,18 +255,11 @@ export function CaseController({
       break;
     case "심리 대기":
       content = (
-        <>
-          <Heading
-            label="심리 대기 중"
-            title="상대가 지금 마음을 정리하고 있어요."
-          >
-            준비가 되면 같은 사건 링크에서 결과를 함께 확인할 수 있어요.
-          </Heading>
-          <Notice>다른 사람의 작성 중 진술은 표시하지 않습니다.</Notice>
+        <WaitingScreen>
           <Button secondary onClick={() => setScreen("양측 대질")}>
             종결 화면 체험
           </Button>
-        </>
+        </WaitingScreen>
       );
       break;
     case "서기 오류":
@@ -419,24 +335,11 @@ export function CaseController({
       break;
     default:
       content = (
-        <>
-          <Heading
-            label="링크 안내"
-            title={
-              screen === "기록 파기"
-                ? "이 사건의 보관 기간이 끝났어요."
-                : "이 사건을 찾을 수 없어요."
-            }
-          >
-            {screen === "기록 파기"
-              ? "아쉽지만 파기된 사건 내용은 다시 볼 수 없어요. 그래도 그 마음은 잘 전해졌을 거예요."
-              : "혹시 링크가 올바른지 한 번만 더 확인해 줄래요?"}
-          </Heading>
-          <div className="empty">{screen === "기록 파기" ? "" : "?"}</div>
+        <CaseGoneScreen kind={screen === "기록 파기" ? "expired" : "missing"}>
           <Button onClick={() => setScreen("사건 접수")}>
             새 사건 접수하기
           </Button>
-        </>
+        </CaseGoneScreen>
       );
   }
   const isChatScreen = screen === "원고 진술" || screen === "피고 진술";
