@@ -14,6 +14,7 @@ export function LiveConversationScreen({
 }) {
   const chat = useConversation(side, sharedStatement);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const chatEndRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const el = textareaRef.current;
     if (!el) return;
@@ -22,6 +23,9 @@ export function LiveConversationScreen({
     el.style.overflowY = el.scrollHeight > maxHeight ? "auto" : "hidden";
     el.style.height = `${el.scrollHeight}px`;
   }, [chat.input]);
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ block: "end" });
+  }, [chat.turns.length, chat.pending]);
   const state = chat.latest?.state;
   return (
     <>
@@ -52,7 +56,7 @@ export function LiveConversationScreen({
       )}
       <div className="chat">
         <p className="assistant">
-          🌰　
+          <span className="assistant-label">중재자</span>
           {side === "A"
             ? "무슨 일 있었어요? 정리 안 된 채로 얘기해도 괜찮아요."
             : "그날은 어땠어요? 다르게 기억하는 부분이 있어도 편하게 얘기해요."}
@@ -65,9 +69,13 @@ export function LiveConversationScreen({
                 진술 수정
               </button>
             </div>
-            <p className="assistant">🌰　{turn.response.assistantMessage}</p>
+            <p className="assistant">
+              <span className="assistant-label">중재자</span>
+              {turn.response.assistantMessage}
+            </p>
           </div>
         ))}
+        <div ref={chatEndRef} />
       </div>
       {state && (
         <details className="panel" open={state.readyToGenerate || undefined}>
@@ -96,7 +104,7 @@ export function LiveConversationScreen({
       )}
       {chat.pending && (
         <p role="status" className="notice">
-          🌰　말씀해주신 마음을 정리하고 있어요…
+          말씀해주신 마음을 정리하고 있어요…
         </p>
       )}
       {chat.error && (
@@ -121,7 +129,7 @@ export function LiveConversationScreen({
           <textarea
             ref={textareaRef}
             id="live-answer"
-            rows={3}
+            rows={1}
             maxLength={8000}
             value={chat.input}
             disabled={chat.pending}
