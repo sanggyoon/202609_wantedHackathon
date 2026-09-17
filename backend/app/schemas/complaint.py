@@ -72,8 +72,8 @@ class SharedStatement(BaseModel):
     alias를 두지 않아 요청·응답 모두 snake_case다.
     """
 
-    # 아직 생성 주체가 없다. 대화 엔진이 추출하지 않으므로 항상 빈 값으로 들어온다.
-    # docs/API_Design.md §10-2 참고.
+    # cute_charge·incident_summary는 검토 화면에서 /api/complaint/card-summary로 생성하며
+    # 사용자가 고칠 수 있다. different_viewpoint는 아직 생성 주체가 없다 (API_Design §10-2).
     cute_charge: str = Field(default="", max_length=200)
     incident_summary: str = Field(default="", max_length=8000)
     different_viewpoint: str | None = Field(default=None, max_length=8000)
