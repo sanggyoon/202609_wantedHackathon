@@ -410,6 +410,13 @@ body.chat-open .screen > .notice {
   justify-content: center;
   margin-top: 24px;
 }
+.story-intro {
+  margin: 12px 0 4px;
+  font-size: clamp(20px, 4vw, 28px);
+  line-height: 1.55;
+  color: var(--text);
+  white-space: pre-wrap;
+}
 .toggle-row .button {
   width: auto;
   padding: 12px 32px;

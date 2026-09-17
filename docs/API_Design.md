@@ -221,8 +221,9 @@ POST /api/mediation/report
     "desired_outcome": "먼저 알려줬으면 좋겠어",          // 필수
     "expected_behavior": "짧게라도 연락",
     "assumption": "일부러 무시한 것 같다",
-    "cute_charge": "",            // 생성 주체 없음 — §10-2
-    "incident_summary": "",       // 생성 주체 없음 — §10-2
+    "cute_charge": "",            // 검토 단계에서 생성·수정
+    "incident_summary": "",       // 검토 단계에서 생성·수정
+    "story_intro": "",            // 검토 단계에서 생성·수정
     "different_viewpoint": null   // 생성 주체 없음 — §10-2
   },
   "b": { /* 동일 */ }
@@ -419,6 +420,7 @@ DB를 기준으로 삼는 이유는 두 가지다. PRD §11 데이터 구조 초
 | `assumption` | string | `guess` | DB 컬럼 추가함 |
 | `cute_charge` | string | — | 검토 화면에서 생성, 사용자 수정 가능. 형식 위반·local 모드는 `""` |
 | `incident_summary` | string | — | 검토 화면에서 생성, 사용자 수정 가능. 사건 내용 미공유 시 `""` |
+| `story_intro` | string | — | 검토 화면에서 생성·수정하는 수신자용 1인칭 도입문. 생성 결과 30~180자, 수정은 최대 300자 |
 | `different_viewpoint` | string \| null | — | 항상 `null` — 생성 주체 없음 (§10-2) |
 
 #### "DB 기준"이 컬럼 추가를 포함하는 이유
@@ -467,24 +469,31 @@ alter table apologies       add column admitted_point    text;
 `emotion_reason` 셋을 합쳐 넣고 있었는데, DB에 `hurt_point`가 없어 그대로 두면 데이터가
 버려진다. `expectation`·`guess`와 같은 성격이라 함께 흡수했다.
 
-#### 죄명·한 줄 요약 생성 — **구현됨 (2026-09-17)**
+#### 죄명·한 줄 요약·도입문 생성 — **구현됨 (2026-09-18)**
 
-`POST /api/complaint/card-summary`가 **공유 항목 선택이 끝난 카드**로 `cute_charge`와
-`incident_summary`를 만든다. 서버는 저장하지 않는다. 검토 화면(`PreviewScreen`) 진입 시 1회
-호출하고, 사용자가 확인·수정한 뒤 접수한다. 설계: `docs/superpowers/specs/2026-09-17-card-summary-design.md`.
+`POST /api/complaint/card-summary`가 **공유 항목 선택이 끝난 카드**로 `cute_charge`,
+`incident_summary`, `story_intro`를 한 번에 만든다. 서버는 이 단계에서 저장하지 않는다.
+검토 화면(`PreviewScreen`) 진입 시 1회 호출하고, 사용자가 확인·수정한 뒤 접수한다.
+도입문 설계는 `docs/Story_Intro_Design.md`를 따른다.
 
 ```jsonc
 // 요청
 { "card": { /* SharedStatement */ } }
 // 200
-{ "mode": "openai", "cute_charge": "연락두절죄", "incident_summary": "약속 시간에 연락 없이 늦었다" }
+{
+  "mode": "openai",
+  "cute_charge": "연락두절죄",
+  "incident_summary": "약속 시간에 연락 없이 늦었다",
+  "story_intro": "늦은 것도 서운한데 연락까지 없어서 진짜 걱정했거든? 그래서 너를 '연락두절죄'로 고소할 거야!"
+}
 ```
 
 - 대화 엔진이 아니라 공유 선택 **이후**에 만드는 이유: 사용자가 공유하지 않기로 뺀 추측·감정이
   죄명·요약에 섞이지 않게 하기 위해서다.
-- 코드가 형식을 한 번 더 막는다. 죄명은 "죄"로 끝나는 2~12자, 요약은 60자 이내. 벗어나면
-  자르지 않고 `""`로 비운다. 사건 내용이 `"공유하지 않은 내용"`이면 요약은 항상 `""`.
-- local 모드: 요약은 사건 내용 첫 문장, 죄명은 `""`.
+- 코드가 형식을 한 번 더 막는다. 죄명은 "죄"로 끝나는 2~12자, 요약은 60자 이내,
+  도입문은 30~180자이며 같은 응답의 죄명을 그대로 포함해야 한다. 벗어나면 자르지 않고
+  `""`로 비운다. 사건 내용이 `"공유하지 않은 내용"`이면 요약과 도입문은 항상 `""`.
+- local 모드: 요약은 사건 내용 첫 문장, 죄명과 도입문은 `""`.
 - 실패 시 502 `{"detail": "Card summary generation failed. Please retry."}`. 접수는 막지 않는다.
 
 `different_viewpoint`는 **아직 생성하지 않는다.** A 카드만 있는 시점에 채우려면 상대 관점을

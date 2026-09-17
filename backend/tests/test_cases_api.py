@@ -137,6 +137,7 @@ class ReadCaseTest(unittest.TestCase):
         card = {
             "cute_charge": None,
             "incident_summary": None,
+            "story_intro": None,
             "incident_description": "늦었다",
             "emotions": ["서운함"],
             "emotion_reason": None,
@@ -152,7 +153,7 @@ class ReadCaseTest(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 200)
         got = response.json()["content"]["cards"]["A"]
-        for key in ("cute_charge", "emotion_reason", "hurt_point",
+        for key in ("cute_charge", "story_intro", "emotion_reason", "hurt_point",
                     "expected_behavior", "assumption"):
             self.assertEqual(got[key], "", key)
         # different_viewpoint만은 null을 유지한다 — "아직 없음"과 "빈 값"이 다르다.

@@ -24,12 +24,21 @@ export function StatementSummary({
       {demo && (
         <p className="notice">현재는 화면 체험용 예시 사건입니다.</p>
       )}
-      <h3>사건 요약</h3>
-      <p>{title}</p>
-      <h3>신청인이 느낀 것</h3>
-      <p>{feelingText(data)}</p>
-      <h3>원하는 것</h3>
-      <p>{data.desired_outcome}</p>
+      {data.story_intro ? (
+        <>
+          <h3>내 얘기 좀 들어봐</h3>
+          <p className="story-intro font-point">{data.story_intro}</p>
+        </>
+      ) : (
+        <>
+          <h3>사건 요약</h3>
+          <p>{title}</p>
+          <h3>신청인이 느낀 것</h3>
+          <p>{feelingText(data)}</p>
+          <h3>원하는 것</h3>
+          <p>{data.desired_outcome}</p>
+        </>
+      )}
       <div className="toggle-row">
         <Button secondary onClick={() => setOpen((v) => !v)}>
           {open ? "고소장 접기" : "고소장 보기"}

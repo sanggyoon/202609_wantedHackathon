@@ -222,8 +222,9 @@ frontend/src/
 > `Statement`·`Apology`가 DB `statement_cards`·`apologies` 컬럼명을 따르도록 개편된다.
 > `incident`→`incident_description`, `feeling`→`emotions[]`+`emotion_reason`,
 > `wish`→`desired_outcome`, `expectation`→`expected_behavior`, `guess`→`assumption`,
-> `admitted`→`admitted_point`. 여기에 `cute_charge`·`incident_summary`·
-> `different_viewpoint` 세 필드가 들어왔으나 **생성 주체가 없어 항상 빈 값**이다.
+> `admitted`→`admitted_point`. 여기에 `cute_charge`·`incident_summary`·`story_intro`·
+> `different_viewpoint`가 들어왔다. 앞의 세 필드는 공유 선택 이후 카드 요약 API가 만들고
+> 사용자가 검토·수정하며, `different_viewpoint`만 아직 생성 주체가 없어 항상 빈 값이다.
 > 자세한 매핑은 `docs/API_Design.md` §8-1.
 >
 > `feeling`은 `emotions[]`·`emotion_reason`·`hurt_point` 셋으로 갈렸다. 예전에는 이

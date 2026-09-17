@@ -14,6 +14,7 @@ class CardSummaryRequest(BaseModel):
 class CardSummary(BaseModel):
     cute_charge: str
     incident_summary: str
+    story_intro: str
 
 
 class CardSummaryResponse(CardSummary):

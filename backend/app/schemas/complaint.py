@@ -2,6 +2,13 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+PRESENTATION_FIELDS = {
+    "cute_charge",
+    "incident_summary",
+    "story_intro",
+    "different_viewpoint",
+}
+
 ComplaintMissingField = Literal[
     "incident",
     "hurt_point",
@@ -72,10 +79,11 @@ class SharedStatement(BaseModel):
     alias를 두지 않아 요청·응답 모두 snake_case다.
     """
 
-    # cute_charge·incident_summary는 검토 화면에서 /api/complaint/card-summary로 생성하며
+    # 아래 셋은 검토 화면에서 /api/complaint/card-summary로 생성하며
     # 사용자가 고칠 수 있다. different_viewpoint는 아직 생성 주체가 없다 (API_Design §10-2).
     cute_charge: str = Field(default="", max_length=200)
     incident_summary: str = Field(default="", max_length=8000)
+    story_intro: str = Field(default="", max_length=300)
     different_viewpoint: str | None = Field(default=None, max_length=8000)
 
     incident_description: str = Field(min_length=1, max_length=8000)
@@ -89,6 +97,7 @@ class SharedStatement(BaseModel):
     @field_validator(
         "cute_charge",
         "incident_summary",
+        "story_intro",
         "emotion_reason",
         "hurt_point",
         "expected_behavior",

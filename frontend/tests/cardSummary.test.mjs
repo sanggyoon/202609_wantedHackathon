@@ -21,7 +21,12 @@ const card = () => ({
   incident_description: "연락 없이 늦었다", emotions: ["서운함"], emotion_reason: "",
   desired_outcome: "먼저 연락해주기", sourceMode: "openai",
 });
-const ok = { mode: "openai", cute_charge: "연락두절죄", incident_summary: "연락 없이 늦었다" };
+const ok = {
+  mode: "openai",
+  cute_charge: "연락두절죄",
+  incident_summary: "연락 없이 늦었다",
+  story_intro: "늦은 것도 서운했거든? 그래서 너를 '연락두절죄'로 고소할 거야!",
+};
 const safe = e => e instanceof api.CardSummaryError && e.message === api.CARD_SUMMARY_FAILED;
 
 test("sends only the shared card, without display-only fields or caching", async () => {

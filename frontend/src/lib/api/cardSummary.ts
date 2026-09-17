@@ -4,10 +4,11 @@ export type CardSummaryResult = {
   mode: "openai" | "local";
   cute_charge: string;
   incident_summary: string;
+  story_intro: string;
 };
 
 export const CARD_SUMMARY_FAILED =
-  "밤톨이 죄명을 짓지 못했어요. 다시 시도하거나 직접 적어주세요.";
+  "밤톨이 죄명과 한마디를 만들지 못했어요. 다시 시도하거나 직접 적어주세요.";
 
 export class CardSummaryError extends Error {
   constructor() {
@@ -21,10 +22,16 @@ export function parseCardSummary(v: unknown): CardSummaryResult {
   if (
     (r.mode !== "openai" && r.mode !== "local") ||
     typeof r.cute_charge !== "string" ||
-    typeof r.incident_summary !== "string"
+    typeof r.incident_summary !== "string" ||
+    typeof r.story_intro !== "string"
   )
     throw new CardSummaryError();
-  return { mode: r.mode, cute_charge: r.cute_charge, incident_summary: r.incident_summary };
+  return {
+    mode: r.mode,
+    cute_charge: r.cute_charge,
+    incident_summary: r.incident_summary,
+    story_intro: r.story_intro,
+  };
 }
 
 export async function requestCardSummary(

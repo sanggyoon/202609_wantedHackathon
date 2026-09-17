@@ -5,9 +5,9 @@ import { CARD_SUMMARY_FAILED, requestCardSummary } from "@/lib/api/cardSummary";
 import { StatementCard } from "./StatementCard";
 import type { Statement } from "./types";
 
-// 둘 다 비어 있을 때만 밤톨에게 짓게 한다. 하나라도 있으면 사용자가 정한 값이다.
+// 생성 필드 중 하나라도 비어 있으면 요청하되, 아래 병합에서 사용자가 정한 값은 보존한다.
 function needsSummary(card: Statement) {
-  return !card.cute_charge && !card.incident_summary;
+  return !card.cute_charge || !card.incident_summary || !card.story_intro;
 }
 
 export function PreviewScreen({
@@ -42,6 +42,7 @@ export function PreviewScreen({
           ...current,
           cute_charge: current.cute_charge || result.cute_charge,
           incident_summary: current.incident_summary || result.incident_summary,
+          story_intro: current.story_intro || result.story_intro,
         }));
       })
       .catch(() => {
@@ -66,6 +67,7 @@ export function PreviewScreen({
             [
               ["cute_charge", "죄명"],
               ["incident_summary", "사건 한 줄 요약"],
+              ["story_intro", "상대에게 먼저 보일 한마디"],
               ["incident_description", "사건 내용"],
               ["emotion_reason", "감정의 이유"],
               ["desired_outcome", "바라는 점"],
@@ -75,6 +77,7 @@ export function PreviewScreen({
               {label}
               <textarea
                 rows={3}
+                maxLength={key === "story_intro" ? 300 : undefined}
                 value={value[key] ?? ""}
                 onChange={(e) => setValue({ ...value, [key]: e.target.value })}
               />
@@ -116,7 +119,7 @@ export function PreviewScreen({
               setAttempt((n) => n + 1);
             }}
           >
-            죄명 다시 만들기
+            죄명과 한마디 다시 만들기
           </Button>
         )}
         <Button
