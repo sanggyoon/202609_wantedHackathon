@@ -660,6 +660,14 @@ select:focus {
   color: var(--text);
   max-width: 100%;
 }
+.assistant-label {
+  display: block;
+  font-family: "BMkkubulim", var(--font-sans, sans-serif);
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--primary);
+  margin-bottom: 4px;
+}
 .reply {
   margin: 16px 0 0 auto;
   max-width: 85%;
