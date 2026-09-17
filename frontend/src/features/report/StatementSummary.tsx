@@ -4,7 +4,14 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Button } from "@/components/ui";
 import { feelingText, type Statement } from "./types";
 import { StatementCard } from "./StatementCard";
-export function StatementSummary({ data }: { data: Statement }) {
+// 저장된 카드에는 sourceMode가 없으므로, 실제 사건 화면은 demo={false}를 넘긴다.
+export function StatementSummary({
+  data,
+  demo = !data.sourceMode,
+}: {
+  data: Statement;
+  demo?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const title =
     data.incident_summary || data.incident_description.split(/[.!?。\n]/)[0];
@@ -14,7 +21,7 @@ export function StatementSummary({ data }: { data: Statement }) {
       {data.cute_charge && (
         <p className="cute-charge font-point">「{data.cute_charge}」</p>
       )}
-      {!data.sourceMode && (
+      {demo && (
         <p className="notice">현재는 화면 체험용 예시 사건입니다.</p>
       )}
       <h3>사건 요약</h3>

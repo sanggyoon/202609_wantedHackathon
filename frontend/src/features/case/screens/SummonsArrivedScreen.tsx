@@ -7,17 +7,19 @@ export function SummonsArrivedScreen({
   complaint,
   onApologize,
   onCounter,
+  demo,
 }: {
   complaint: Statement;
   onApologize: () => void;
   onCounter: () => void;
+  demo?: boolean;
 }) {
   return (
     <>
       <Heading label="당신에게 소환장이 도착했어요" title="조금 서운했대요.">
         너무 걱정 말아요. 먼저 마음을 읽어보고,{"\n"}당신의 이야기도 들려주면 돼요.
       </Heading>
-      <StatementSummary data={complaint} />
+      <StatementSummary data={complaint} demo={demo} />
       <div className="actions">
         <Button className="action-minor font-kkubulim" onClick={onApologize}>
           내가 미안

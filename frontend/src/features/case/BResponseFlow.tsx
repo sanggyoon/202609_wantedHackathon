@@ -84,6 +84,7 @@ export function BResponseFlow({
       return (
         <SummonsArrivedScreen
           complaint={complaint}
+          demo={false}
           onApologize={() => setStep("apology")}
           onCounter={() => setStep("counter-talk")}
         />
@@ -108,7 +109,7 @@ export function BResponseFlow({
       return (
         <>
           {header}
-          <StatementSummary data={complaint} />
+          <StatementSummary data={complaint} demo={false} />
           <ConversationScreen
             side="B"
             sharedStatement={complaint}
