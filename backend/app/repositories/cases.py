@@ -27,7 +27,7 @@ class CaseRow:
 
 
 CARD_COLUMNS = (
-    "side, cute_charge, incident_summary, incident_description, emotions, "
+    "side, cute_charge, incident_summary, story_intro, incident_description, emotions, "
     "emotion_reason, hurt_point, different_viewpoint, desired_outcome, "
     "expected_behavior, assumption"
 )
@@ -209,16 +209,17 @@ def _insert_card(conn, case_id: str, side: str, card: SharedStatement) -> None:
     conn.execute(
         """
         insert into statement_cards
-            (case_id, side, cute_charge, incident_summary, incident_description,
+            (case_id, side, cute_charge, incident_summary, story_intro, incident_description,
              emotions, emotion_reason, hurt_point, different_viewpoint,
              desired_outcome, expected_behavior, assumption)
-        values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """,
         (
             case_id,
             side,
             card.cute_charge,
             card.incident_summary,
+            card.story_intro,
             card.incident_description,
             card.emotions,
             card.emotion_reason,

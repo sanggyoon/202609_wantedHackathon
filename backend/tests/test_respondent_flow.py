@@ -16,6 +16,7 @@ CARD = {
     "emotions": ["서운함"],
     "emotion_reason": "기다린 시간이 길어서",
     "desired_outcome": "먼저 연락해주기",
+    "story_intro": "너한테 직접 보여줄 감정적인 도입문",
 }
 
 
@@ -55,6 +56,8 @@ class RespondentTest(unittest.TestCase):
         self.assertIn("respondent B", extract.call_args.args[2])
         self.assertIn("NOT established truth", speak.call_args.args[3])
         self.assertIn(CARD["incident_description"], extract.call_args.args[2])
+        self.assertNotIn(CARD["story_intro"], extract.call_args.args[2])
+        self.assertNotIn(CARD["story_intro"], speak.call_args.args[3])
 
     def test_b_can_complete_without_agreeing_or_apologizing(self):
         with patch("app.services.complaint_engine.is_openai_configured", return_value=False):
@@ -106,6 +109,9 @@ class RespondentTest(unittest.TestCase):
         self.assertEqual(
             set(json.loads(model.call_args.kwargs["messages"][1]["content"])), {"a", "b"}
         )
+        sent = json.loads(model.call_args.kwargs["messages"][1]["content"])
+        self.assertNotIn("story_intro", sent["a"])
+        self.assertNotIn("story_intro", sent["b"])
 
     def test_report_failure_does_not_leak_provider_error(self):
         with patch(
