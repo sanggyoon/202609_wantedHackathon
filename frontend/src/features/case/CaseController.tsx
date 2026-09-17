@@ -2,7 +2,6 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { StartScreen } from "./StartScreen";
-import { ShareSelectScreen } from "./ShareSelectScreen";
 import { StatementSummary } from "@/features/report/StatementSummary";
 import { Button, Heading, Notice, Toast } from "@/components/ui";
 import { ConversationScreen } from "@/features/conversation/ConversationScreen";
@@ -20,12 +19,10 @@ const entryModes = ["new", "invited", "result"] as const;
 const screens = [
   "사건 접수",
   "원고 진술",
-  "공유 항목 선택",
   "고소장 검토",
   "소환장 발송",
   "소환장 도착",
   "피고 진술",
-  "맞고소 항목 선택",
   "맞고소장 검토",
   "맞고소장 발송",
   "양측 대질",
@@ -129,37 +126,13 @@ export function CaseController({
             onComplete={(v) => {
               if (side === "A") setA(v);
               else setB(v);
-              setScreen(side === "A" ? "공유 항목 선택" : "맞고소 항목 선택");
+              setScreen(side === "A" ? "고소장 검토" : "맞고소장 검토");
             }}
           />
         </>
       );
       break;
     }
-    case "공유 항목 선택":
-      content = (
-        <ShareSelectScreen
-          side="A"
-          data={a}
-          onComplete={(value) => {
-            setA(value);
-            setScreen("고소장 검토");
-          }}
-        />
-      );
-      break;
-    case "맞고소 항목 선택":
-      content = (
-        <ShareSelectScreen
-          side="B"
-          data={b}
-          onComplete={(value) => {
-            setB(value);
-            setScreen("맞고소장 검토");
-          }}
-        />
-      );
-      break;
     case "고소장 검토":
     case "맞고소장 검토": {
       const side = screen === "고소장 검토" ? "A" : "B";

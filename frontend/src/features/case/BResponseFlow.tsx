@@ -16,10 +16,9 @@ import {
 import type { CaseStage } from "./caseStage";
 import type { Submit } from "./LinkedCaseScreen";
 import { SummonsArrivedScreen } from "./screens/SummonsArrivedScreen";
-import { ShareSelectScreen } from "./ShareSelectScreen";
 import { StartScreen } from "./StartScreen";
 
-type Step = "intro" | "arrived" | "apology" | "counter-talk" | "counter-select" | "counter-preview";
+type Step = "intro" | "arrived" | "apology" | "counter-talk" | "counter-preview";
 
 // B: 소환장 → 사과 또는 맞고소 작성 → 제출. 선택은 제출할 때 서버에 확정한다.
 export function BResponseFlow({
@@ -44,7 +43,6 @@ export function BResponseFlow({
     locked === "APOLOGY" ? "apology" : locked === "COUNTER" ? "counter-talk" : "intro",
   );
   const [draft, setDraft] = useState<Statement | null>(null);
-  const [selected, setSelected] = useState<Statement | null>(null);
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [step]);
@@ -115,27 +113,16 @@ export function BResponseFlow({
             sharedStatement={complaint}
             onComplete={(value) => {
               setDraft(value);
-              setStep("counter-select");
+              setStep("counter-preview");
             }}
           />
         </>
       );
-    case "counter-select":
-      return draft ? (
-        <ShareSelectScreen
-          side="B"
-          data={draft}
-          onComplete={(value) => {
-            setSelected(value);
-            setStep("counter-preview");
-          }}
-        />
-      ) : null;
     case "counter-preview":
-      return selected ? (
+      return draft ? (
         <PreviewScreen
           side="B"
-          initial={selected}
+          initial={draft}
           busy={busy}
           submitLabel={
             busy ? "밤톨이 두 분의 이야기를 정리하고 있어요… (최대 1분)" : undefined
