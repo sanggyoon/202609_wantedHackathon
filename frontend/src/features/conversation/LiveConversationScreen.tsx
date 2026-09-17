@@ -74,12 +74,6 @@ export function LiveConversationScreen({
           <summary>밤톨이 이해한 내용</summary>
           <h3>사건</h3>
           <p>{state.incident.description || "이야기를 더 들려주세요."}</p>
-          {state.hurtPoint && (
-            <>
-              <h3>서운했던 지점 (선택)</h3>
-              <p>{state.hurtPoint}</p>
-            </>
-          )}
           <h3>감정과 이유</h3>
           <p>
             {state.emotion.emotions.join(", ")} {state.emotion.reason}
