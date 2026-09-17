@@ -18,23 +18,29 @@ function load(path, mocks = {}) {
 const api = load("../src/lib/api/cases.ts");
 const session = load("../src/features/case/writerSession.ts", { "@/lib/api/cases": api });
 const originalFetch = globalThis.fetch;
-const originalStorage = Object.getOwnPropertyDescriptor(globalThis, "sessionStorage");
+const originalStorages = Object.fromEntries(["localStorage", "sessionStorage"].map(name => [name, Object.getOwnPropertyDescriptor(globalThis, name)]));
 afterEach(() => {
   globalThis.fetch = originalFetch;
-  if (originalStorage) Object.defineProperty(globalThis, "sessionStorage", originalStorage);
-  else delete globalThis.sessionStorage;
+  for (const [name, descriptor] of Object.entries(originalStorages)) {
+    if (descriptor) Object.defineProperty(globalThis, name, descriptor);
+    else delete globalThis[name];
+  }
 });
 const publicToken = "p".repeat(43);
 const writerToken = "w".repeat(43);
 const expires = () => new Date(Date.now() + 86400000).toISOString();
 const draft = () => ({ status: "DRAFT", viewer_role: "A", expires_at: expires(), available_actions: ["converse", "submit_statement"], content: null });
 const created = () => ({ public_token: publicToken, writer_token: writerToken, expires_at: expires(), status: "DRAFT" });
-function storage() {
+function fakeStorage(name) {
   const values = new Map();
-  Object.defineProperty(globalThis, "sessionStorage", { configurable: true, value: {
-    getItem: k => values.get(k) ?? null, setItem: (k, v) => values.set(k, v), removeItem: k => values.delete(k),
+  Object.defineProperty(globalThis, name, { configurable: true, value: {
+    getItem: k => values.get(k) ?? null, setItem: (k, v) => values.set(k, String(v)), removeItem: k => values.delete(k),
   } });
   return values;
+}
+function storage() {
+  fakeStorage("sessionStorage");
+  return fakeStorage("localStorage");
 }
 test("URL contains only the public token", () => {
   assert.equal(api.casePath(publicToken), "/case/" + publicToken);
@@ -114,9 +120,11 @@ test("expired and corrupt credentials are not used", () => {
   assert.equal(session.getWriter(publicToken), null);
 });
 test("disabled storage fails preflight but viewing as B remains possible", () => {
-  Object.defineProperty(globalThis, "sessionStorage", { configurable: true, get() { throw new Error("blocked"); } });
+  for (const name of ["localStorage", "sessionStorage"])
+    Object.defineProperty(globalThis, name, { configurable: true, get() { throw new Error("blocked"); } });
   assert.throws(() => session.checkWriterStorage());
   assert.equal(session.getWriter(publicToken), null);
+  session.forgetWriter(publicToken);
 });
 const cardA = () => ({ incident_description: "사건", emotions: [], emotion_reason: "", desired_outcome: "바람" });
 const report = () => ({ common_ground: [], different_views: [], hurt_points_a: [], hurt_points_b: [], possible_misunderstanding: null, conversation_starter: "대화" });
@@ -242,4 +250,36 @@ test("respond does not read or submit after other choice errors", async () => {
   const calls = route({ "POST /response-type": () => new Response("", { status: 503 }) });
   await assert.rejects(api.respond(publicToken, "APOLOGY", async () => { throw new Error("must not submit"); }), e => e.status === 503);
   assert.deepEqual(calls, ["POST /response-type"]);
+});
+test("writer survives in localStorage, not per tab", () => {
+  const local = storage();
+  session.rememberWriter(created());
+  assert.equal(local.size, 1);
+  assert.equal(globalThis.sessionStorage.getItem("bamtol:writer:" + publicToken), null);
+  assert.equal(session.getWriter(publicToken), writerToken);
+});
+test("writer saved by the previous tab-scoped version is moved once", () => {
+  const local = storage();
+  const key = "bamtol:writer:" + publicToken;
+  globalThis.sessionStorage.setItem(key, JSON.stringify({ token: writerToken, expires: expires() }));
+  assert.equal(session.getWriter(publicToken), writerToken);
+  assert.ok(local.has(key));
+  assert.equal(globalThis.sessionStorage.getItem(key), null);
+});
+test("expired previous-version writer is removed, not moved", () => {
+  const local = storage();
+  const key = "bamtol:writer:" + publicToken;
+  globalThis.sessionStorage.setItem(key, JSON.stringify({ token: writerToken, expires: "2000-01-01" }));
+  assert.equal(session.getWriter(publicToken), null);
+  assert.equal(local.size, 0);
+  assert.equal(globalThis.sessionStorage.getItem(key), null);
+});
+test("forget clears both storages", () => {
+  const local = storage();
+  const key = "bamtol:writer:" + publicToken;
+  session.rememberWriter(created());
+  globalThis.sessionStorage.setItem(key, "x");
+  session.forgetWriter(publicToken);
+  assert.equal(local.size, 0);
+  assert.equal(globalThis.sessionStorage.getItem(key), null);
 });
