@@ -344,7 +344,11 @@ export function CaseController({
   }
   const isChatScreen = screen === "원고 진술" || screen === "피고 진술";
   useEffect(() => {
-    if (!isChatScreen) window.scrollTo(0, 0);
+    if (isChatScreen) {
+      window.scrollTo(0, document.documentElement.scrollHeight);
+    } else {
+      window.scrollTo(0, 0);
+    }
   }, [screen, isChatScreen]);
   const devPanel = (
     <aside className="review">

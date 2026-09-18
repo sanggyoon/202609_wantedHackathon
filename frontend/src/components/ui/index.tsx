@@ -17,13 +17,13 @@ export function Heading({
   title,
   children,
 }: {
-  label: string;
+  label?: string;
   title: string;
   children?: ReactNode;
 }) {
   return (
     <div className="heading">
-      <small>{label}</small>
+      {label && <small>{label}</small>}
       <h1>{title}</h1>
       {children && <p>{children}</p>}
     </div>
