@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef } from "react";
-import { Button, Heading, Notice } from "@/components/ui";
+import { Button, Notice } from "@/components/ui";
 import type { Statement } from "@/features/report/types";
 import { useConversation } from "./useConversation";
 export function LiveConversationScreen({
@@ -14,7 +14,6 @@ export function LiveConversationScreen({
 }) {
   const chat = useConversation(side, sharedStatement);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const chatEndRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const el = textareaRef.current;
     if (!el) return;
@@ -23,22 +22,16 @@ export function LiveConversationScreen({
     el.style.overflowY = el.scrollHeight > maxHeight ? "auto" : "hidden";
     el.style.height = `${el.scrollHeight}px`;
   }, [chat.input]);
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ block: "end" });
-  }, [chat.turns.length, chat.pending]);
   const state = chat.latest?.state;
+  useEffect(() => {
+    window.scrollTo({ top: document.body.scrollHeight });
+  }, [chat.turns.length, chat.pending, chat.pendingTurn, chat.error, state]);
+  useEffect(() => {
+    document.body.classList.add("chat-open");
+    return () => document.body.classList.remove("chat-open");
+  }, []);
   return (
     <>
-      <Heading
-        label={`${side === "A" ? "신청인" : "상대방"} 진술 · 대화 엔진 연결`}
-        title={
-          side === "A"
-            ? "무슨 일 있었어요?"
-            : "이번엔 어떤 일이 있었는지 들려줄래요?"
-        }
-      >
-        편하게 얘기해요. 제가 들어볼게요.
-      </Heading>
       <Notice>
         {chat.latest?.mode === "local"
           ? "로컬 규칙 기반 응답입니다. OpenAI API는 사용하지 않았어요."
@@ -55,12 +48,19 @@ export function LiveConversationScreen({
         </Notice>
       )}
       <div className="chat">
-        <p className="assistant">
-          <span className="assistant-label">중재자</span>
-          {side === "A"
-            ? "무슨 일 있었어요? 정리 안 된 채로 얘기해도 괜찮아요."
-            : "그날은 어땠어요? 다르게 기억하는 부분이 있어도 편하게 얘기해요."}
-        </p>
+        {chat.turns.length === 0 && !chat.pendingTurn && (
+          <div className="assistant-intro">
+            <span className="assistant-label">중재자</span>
+            <div className="heading">
+              <h1>
+                {side === "A"
+                  ? "무슨 일 있었어요?"
+                  : "이번엔 어떤 일이 있었는지 들려줄래요?"}
+              </h1>
+              <p>편하게 얘기해요. 제가 들어볼게요.</p>
+            </div>
+          </div>
+        )}
         {chat.turns.map((turn, i) => (
           <div key={i}>
             <div className="reply">
@@ -75,7 +75,21 @@ export function LiveConversationScreen({
             </p>
           </div>
         ))}
-        <div ref={chatEndRef} />
+        {chat.pendingTurn && (
+          <div>
+            <div className="reply">
+              <p>{chat.pendingTurn.text}</p>
+            </div>
+            <p role="status" className="notice typing-notice">
+              말씀해주신 마음을 정리하고 있어요
+              <span className="typing-dots" aria-hidden="true">
+                <span />
+                <span />
+                <span />
+              </span>
+            </p>
+          </div>
+        )}
       </div>
       {state && (
         <details className="panel" open={state.readyToGenerate || undefined}>
@@ -102,11 +116,6 @@ export function LiveConversationScreen({
           <p>{state.desiredOutcome || "아직 확인하지 못했어요."}</p>
         </details>
       )}
-      {chat.pending && (
-        <p role="status" className="notice">
-          말씀해주신 마음을 정리하고 있어요…
-        </p>
-      )}
       {chat.error && (
         <p role="alert" className="notice">
           {chat.error}
@@ -120,25 +129,30 @@ export function LiveConversationScreen({
             void chat.send();
           }}
         >
-          <label htmlFor="live-answer">
-            {chat.editing === null ? "내 진술" : "이전 진술 수정"}
-          </label>
           {chat.editing !== null && (
             <Notice>수정한 답변 이후의 대화는 다시 이어갑니다.</Notice>
           )}
-          <textarea
-            ref={textareaRef}
-            id="live-answer"
-            rows={1}
-            maxLength={8000}
-            value={chat.input}
-            disabled={chat.pending}
-            onChange={(e) => chat.setInput(e.target.value)}
-            placeholder="중재자 밤톨에게 편하게 말해보세요."
-          />
-          <Button type="submit" disabled={chat.pending || !chat.input.trim()}>
-            {chat.error ? "다시 시도하기" : "진술하기 ↑"}
-          </Button>
+          <div className="composer-row">
+            <textarea
+              ref={textareaRef}
+              id="live-answer"
+              aria-label={chat.editing === null ? "내 진술" : "이전 진술 수정"}
+              rows={1}
+              maxLength={8000}
+              value={chat.input}
+              disabled={chat.pending}
+              onChange={(e) => chat.setInput(e.target.value)}
+              placeholder="중재자 밤톨에게 편하게 말해보세요."
+            />
+            <button
+              type="submit"
+              className="send"
+              disabled={chat.pending || !chat.input.trim()}
+              aria-label={chat.error ? "다시 시도하기" : "진술하기"}
+            >
+              {chat.error ? "↻" : "↑"}
+            </button>
+          </div>
           {chat.editing !== null && (
             <Button secondary disabled={chat.pending} onClick={chat.cancelEdit}>
               수정 취소

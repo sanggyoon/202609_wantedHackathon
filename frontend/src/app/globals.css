@@ -181,8 +181,7 @@ header > a {
   border-radius: 32px;
 }
 .paper-duo-viewport {
-  width: 100vw;
-  margin-left: calc(50% - 50vw);
+  width: 100%;
   overflow: hidden;
 }
 .paper-duo {
@@ -263,6 +262,9 @@ footer {
 body.chat-open footer,
 body.chat-open .screen > .notice {
   display: none;
+}
+body.chat-open .screen {
+  padding-bottom: 0;
 }
 .review {
   margin-top: 16px;
@@ -504,6 +506,45 @@ body.chat-open .screen > .notice {
 .panel > .notice {
   margin: 16px 0;
 }
+.typing-notice {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 16px;
+  background: none;
+  padding: 0;
+  color: var(--primary);
+}
+.typing-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.typing-dots span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--primary);
+  animation: typing-dot-bounce 1.2s infinite ease-in-out;
+}
+.typing-dots span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.typing-dots span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+@keyframes typing-dot-bounce {
+  0%,
+  60%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
 .placeholder {
   margin-top: 16px;
   border: 1px dashed var(--border);
@@ -660,6 +701,15 @@ select:focus {
   color: var(--text);
   max-width: 100%;
 }
+.assistant-intro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin: auto;
+  max-width: 320px;
+  text-align: center;
+}
 .assistant-label {
   display: block;
   font-family: "BMkkubulim", var(--font-sans, sans-serif);
@@ -704,6 +754,9 @@ select:focus {
   border-color: #e5e7eb;
   box-shadow: 0 4px 16px #d8d6d2;
 }
+.composer.live-composer:focus-within {
+  box-shadow: none;
+}
 /* 채팅 UI의 입력창은 화면 맨 아래에 고정한다. 모바일에서는 키보드가 열리면
    sticky 특성상 자연스럽게 키보드 위로 밀려 올라간다. */
 .composer {
@@ -713,27 +766,42 @@ select:focus {
   box-shadow: 0 -8px 16px #f5f4f2;
 }
 .composer.live-composer {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   align-items: stretch;
+  gap: 8px;
+  background: #fafafa;
+  border: none;
+  border-top: 1px solid var(--border);
+  border-radius: 0;
+  box-shadow: none;
+  padding: 8px 0 calc(8px + env(safe-area-inset-bottom));
+}
+.composer-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
 }
 .composer textarea {
   flex: 1;
   min-width: 0;
-  border: none;
-  background: transparent;
-  border-radius: 0;
+  border: 1px solid transparent;
+  background: #f1f1f3;
+  border-radius: 20px;
   resize: none;
   max-height: 120px;
   overflow-y: hidden;
-  padding: 12px 14px;
+  padding: 12px 16px;
 }
 .composer textarea:focus {
   outline: none;
+  border-color: var(--primary);
 }
 .composer .send {
   flex: 0 0 auto;
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
+  margin-bottom: 4px;
   border-radius: 999px;
   border: none;
   background: var(--primary);
