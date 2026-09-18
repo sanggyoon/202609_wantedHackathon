@@ -34,8 +34,10 @@ export const NOT_SHARED = "공유하지 않은 내용";
 
 // 감정 목록과 이유를 한 덩어리 텍스트로 합친다. 카드·요약 화면 표시용이며
 // 저장 형태가 아니다 — 저장은 emotions[]와 emotion_reason으로 나뉘어 간다.
+// 감정을 먼저 보이고, 그 뒤에 이유(서운했던 지점·감정의 이유)를 묶어 감정과 이유가
+// 뒤섞이지 않게 한다.
 export function feelingText(data: Statement): string {
-  return [data.hurt_point, data.emotions.join(", "), data.emotion_reason]
+  return [data.emotions.join(", "), data.hurt_point, data.emotion_reason]
     .filter(Boolean)
     .join("\n");
 }
