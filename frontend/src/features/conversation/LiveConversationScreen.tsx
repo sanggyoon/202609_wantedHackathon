@@ -200,6 +200,19 @@ export function LiveConversationScreen({
               value={chat.input}
               disabled={chat.pending}
               onChange={(e) => chat.setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key !== "Enter" || e.nativeEvent.isComposing) return;
+                if (!window.matchMedia("(pointer: fine)").matches) return;
+                if (e.shiftKey) return;
+                e.preventDefault();
+                if (e.ctrlKey || e.metaKey) {
+                  const el = e.currentTarget;
+                  el.setRangeText("\n", el.selectionStart, el.selectionEnd, "end");
+                  chat.setInput(el.value);
+                } else if (!chat.pending && chat.input.trim()) {
+                  e.currentTarget.form?.requestSubmit();
+                }
+              }}
               placeholder="중재자 밤톨에게 편하게 말해보세요."
             />
             <button
