@@ -86,10 +86,14 @@ export function StartScreen({
   useEffect(() => {
     if (entryMode !== "result") return;
     window.scrollTo(0, 0);
-    setScrolled(false);
     const onScroll = () => setScrolled(window.scrollY > 24);
+    // 이펙트 본문에서 곧바로 setState 하지 않도록 다음 프레임에 초기화한다.
+    const raf = requestAnimationFrame(onScroll);
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("scroll", onScroll);
+    };
   }, [entryMode, resultTab]);
   return (
     <>
