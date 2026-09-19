@@ -453,7 +453,7 @@ DB를 기준으로 삼는 이유는 두 가지다. PRD §11 데이터 구조 초
 #### "DB 기준"이 컬럼 추가를 포함하는 이유
 
 `expectation`·`guess`를 단순히 버릴 수 없다. 프론트의 **공유 항목 선택 화면**
-(`ShareSelectScreen.tsx`)이 사용자에게 이 둘을 공유할지 고르게 하고,
+(`ShareSelectScreen.tsx`, 2026-09-18 흐름에서 제거)이 사용자에게 이 둘을 공유할지 고르게 했고,
 `StatementCard.tsx`가 카드에 표시한다. 제품 기능이 이미 붙어 있다.
 
 따라서 DB 기준이란 **"DB가 이름과 구조의 권위를 갖되, 프론트에만 있던 항목은 마이그레이션으로
@@ -614,7 +614,8 @@ select status, start_time, return_message
 
 5번(동기 응답 시간)은 대상 경로가 바뀌었다. 맞고소 제출은 OpenAI를 1회만 부르고, 한 요청에서
 2회 연속 호출이 일어나는 곳은 **대화 API**(추출 + 발화, 최대 50초)다. 프론트 대화 타임아웃
-65초가 Nginx 기본 `proxy_read_timeout` 60초보다 길다 — `AI_Latency_Report.md` §9 참고.
+클라이언트 제한은 55초로 맞췄고(2026-09-19), 서버 `proxy_read_timeout` 상향은 실측 후 정한다 —
+`AI_Latency_Report.md` §9 참고.
 
 ### 해소된 항목
 
