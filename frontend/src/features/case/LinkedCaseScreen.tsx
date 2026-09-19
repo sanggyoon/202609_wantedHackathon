@@ -212,9 +212,6 @@ export function LinkedCaseScreen({
         <StartScreen
           entryMode="result"
           resultTab="counterclaim"
-          emotionA={cards.A.emotion_scores}
-          emotionB={cards.B.emotion_scores}
-          placeholderImages={demo}
           notice={destroyNotice}
           onStart={() => {}}
         />

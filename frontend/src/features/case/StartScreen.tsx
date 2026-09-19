@@ -49,6 +49,18 @@ const copy: Record<
 
 export type ResultEnding = "apology" | "counterclaim";
 
+// 히어로 최상단에 나란히 놓는 감정 이미지 8종
+const HERO_STRIP = [
+  "anger",
+  "irritated",
+  "frustration",
+  "wronged",
+  "hurt",
+  "sadness",
+  "loneliness",
+  "anxiety",
+] as const;
+
 export function StartScreen({
   entryMode = "new",
   resultTab = "apology",
@@ -60,15 +72,9 @@ export function StartScreen({
   ),
   busy = false,
   emotion,
-  emotionA,
-  emotionB,
-  placeholderImages = false,
   onStart,
 }: {
-  placeholderImages?: boolean;
   emotion?: EmotionProfile | null;
-  emotionA?: EmotionProfile | null;
-  emotionB?: EmotionProfile | null;
   entryMode?: EntryMode;
   resultTab?: ResultEnding;
   notice?: ReactNode;
@@ -76,15 +82,19 @@ export function StartScreen({
   onStart: (ending?: ResultEnding) => void;
 }) {
   const c = copy[entryMode];
-  // 결과 화면은 항상 최상단(이미지)에서 시작한다.
+  // 결과 화면은 항상 최상단에서 시작한다.
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
     if (entryMode !== "result") return;
     window.scrollTo(0, 0);
-    setScrolled(false);
     const onScroll = () => setScrolled(window.scrollY > 24);
+    // 이펙트 본문에서 곧바로 setState 하지 않도록 다음 프레임에 초기화한다.
+    const raf = requestAnimationFrame(onScroll);
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("scroll", onScroll);
+    };
   }, [entryMode, resultTab]);
   return (
     <>
@@ -94,41 +104,11 @@ export function StartScreen({
             <img src="/images/asset1.png" alt="" className="paper-image" />
           </div>
         ) : entryMode === "result" ? (
-          resultTab === "apology" ? (
-            <div className="paper doc-image" aria-hidden="true">
-              <img src="/images/apple.png" alt="" className="paper-image" />
-            </div>
-          ) : (
-            <div className="paper-duo-viewport" aria-hidden="true">
-              <motion.div
-                className="paper-duo font-point"
-                drag="x"
-                dragConstraints={{ left: -48, right: 48 }}
-                dragElastic={0.6}
-                dragSnapToOrigin
-              >
-                <div className="doc-half plaintiff">
-                  {emotionA ? (
-                    <EmotionWarpImage profile={emotionA} />
-                  ) : placeholderImages ? (
-                    // 와이어프레임 전용 임시 이미지
-                    <img src="/images/anger.png" alt="" className="paper-image" />
-                  ) : (
-                    "원고"
-                  )}
-                </div>
-                <div className="doc-half defendant">
-                  {emotionB ? (
-                    <EmotionWarpImage profile={emotionB} />
-                  ) : placeholderImages ? (
-                    <img src="/images/sadness.png" alt="" className="paper-image" />
-                  ) : (
-                    "피고"
-                  )}
-                </div>
-              </motion.div>
-            </div>
-          )
+          <div className="hero-strip" aria-hidden="true">
+            {HERO_STRIP.map((name) => (
+              <img key={name} src={`/images/${name}.png`} alt="" />
+            ))}
+          </div>
         ) : emotion ? (
           <div className="hero-emotion-gray">
             <EmotionWarpImage profile={emotion} />

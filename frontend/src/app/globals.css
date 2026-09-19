@@ -180,6 +180,21 @@ header > a {
   display: block;
   border-radius: 32px;
 }
+/* 시작화면 3 히어로 최상단: 감정 이미지 8종 가로 나열 */
+.hero-strip {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 4px;
+  align-items: center;
+}
+.hero-strip img {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 6px;
+}
+
 .paper-duo-viewport {
   width: 100%;
   overflow: hidden;
@@ -259,6 +274,10 @@ footer {
   font-size: 12px;
   color: var(--muted);
   padding: 40px 8px calc(24px + env(safe-area-inset-bottom));
+}
+/* 하단 고정 CTA가 있는 화면에서는 푸터 문구가 버튼 뒤에 가려지지 않도록 여백을 더 준다 */
+body:has(.cta-float) footer {
+  padding-bottom: calc(152px + env(safe-area-inset-bottom));
 }
 /* 채팅 UI(진술 화면)에서는 하단 안내 영역을 완전히 숨겨, 입력창이 카카오톡처럼
    화면 맨 아래에 붙고 모바일 키보드가 열릴 때 그대로 밀려 올라가게 한다. */
