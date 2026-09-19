@@ -53,12 +53,7 @@ export function MediationReport({
           )}
         </div>
       ))}
-      <h3>오해가 생겼을 가능성</h3>
-      <p>
-        {report.possible_misunderstanding ||
-          "지금 내용만으로는 판단하기 어려워요."}
-      </p>
-      <h3 className="recommend-title text-primary">다음 대화의 시작 문장</h3>
+      <h3 className="recommend-title text-primary">화해를 위한 조언</h3>
       <p className="recommend-desc">{report.conversation_starter}</p>
     </>
   );
