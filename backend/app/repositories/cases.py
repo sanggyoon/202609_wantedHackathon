@@ -8,6 +8,8 @@ RLS가 켜져 있고 정책이 없으므로 service_role(= DATABASE_URL의 postg
 from dataclasses import dataclass
 from datetime import datetime
 
+from psycopg.types.json import Jsonb
+
 from app.db import connection
 from app.schemas.complaint import SharedStatement
 from app.schemas.mediation import MediationReport
@@ -28,6 +30,7 @@ class CaseRow:
 
 CARD_COLUMNS = (
     "side, cute_charge, incident_summary, story_intro, incident_description, emotions, "
+    "emotion_scores, "
     "emotion_reason, hurt_point, different_viewpoint, desired_outcome, "
     "expected_behavior, assumption"
 )
@@ -210,9 +213,9 @@ def _insert_card(conn, case_id: str, side: str, card: SharedStatement) -> None:
         """
         insert into statement_cards
             (case_id, side, cute_charge, incident_summary, story_intro, incident_description,
-             emotions, emotion_reason, hurt_point, different_viewpoint,
+             emotions, emotion_scores, emotion_reason, hurt_point, different_viewpoint,
              desired_outcome, expected_behavior, assumption)
-        values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """,
         (
             case_id,
@@ -222,6 +225,7 @@ def _insert_card(conn, case_id: str, side: str, card: SharedStatement) -> None:
             card.story_intro,
             card.incident_description,
             card.emotions,
+            Jsonb(card.emotion_scores.model_dump()) if card.emotion_scores else Jsonb({}),
             card.emotion_reason,
             card.hurt_point,
             card.different_viewpoint,
