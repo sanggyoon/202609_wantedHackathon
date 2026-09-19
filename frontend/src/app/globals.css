@@ -248,6 +248,9 @@ header > a {
   font-size: 14px;
   color: var(--muted);
 }
+.steps p:last-child {
+  border-bottom: none;
+}
 .steps b {
   color: var(--text);
 }
