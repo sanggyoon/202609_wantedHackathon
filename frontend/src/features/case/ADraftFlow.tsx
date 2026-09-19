@@ -4,23 +4,27 @@ import { Notice } from "@/components/ui";
 import { ConversationScreen } from "@/features/conversation/ConversationScreen";
 import { PreviewScreen } from "@/features/report/PreviewScreen";
 import type { Statement } from "@/features/report/types";
-import { submitStatement } from "@/lib/api/cases";
+import type { CaseApi } from "@/lib/api/cases";
 import type { Submit } from "./LinkedCaseScreen";
 import { getWriter } from "./writerSession";
 
 // A: 대화 → 검토 → 접수. 작성 중 내용은 메모리에만 있다.
 export function ADraftFlow({
   token,
+  api,
+  seed,
   busy,
   error,
   submit,
 }: {
   token: string;
+  api: CaseApi;
+  seed?: Statement;
   busy: boolean;
   error: string | null;
   submit: Submit;
 }) {
-  const [draft, setDraft] = useState<Statement | null>(null);
+  const [draft, setDraft] = useState<Statement | null>(seed ?? null);
   useEffect(() => {
     if (draft) window.scrollTo(0, 0);
   }, [draft]);
@@ -33,7 +37,7 @@ export function ADraftFlow({
       submitLabel={busy ? "고소장을 접수하고 있어요…" : undefined}
       notice={error && <Notice>{error}</Notice>}
       onConfirm={(card) =>
-        void submit(() => submitStatement(token, "A", card, getWriter(token)))
+        void submit(() => api.submitStatement(token, "A", card, getWriter(token)))
       }
     />
   );

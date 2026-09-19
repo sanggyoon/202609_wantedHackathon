@@ -110,6 +110,13 @@ export function submitApology(token: string, apology: Apology, signal?: AbortSig
   return post(token, "apology", { body: apology.body, understood_point: optional(apology.understood_point),
     admitted_point: optional(apology.admitted_point), future_commitment: optional(apology.future_commitment) }, {}, signal);
 }
+// 사건 화면이 쓰는 API 묶음. 시안(/wireframe)이 같은 화면에 가짜 구현을 꽂아 쓴다.
+export type CaseApi = {
+  readCase: typeof readCase;
+  submitStatement: typeof submitStatement;
+  submitApology: typeof submitApology;
+  respond: typeof respond;
+};
 export function canResumeAfterConflict(status: CaseStatus, kind: ResponseKind): boolean {
   return status === (kind === "APOLOGY" ? "APOLOGY_DRAFT" : "COUNTER_DRAFT");
 }
@@ -124,3 +131,4 @@ export async function respond(token: string, kind: ResponseKind, submit: () => P
   }
   return submit();
 }
+export const liveCaseApi: CaseApi = { readCase, submitStatement, submitApology, respond };
