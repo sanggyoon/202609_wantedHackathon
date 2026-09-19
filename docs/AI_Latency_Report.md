@@ -1,7 +1,12 @@
 # AI 응답 시간 측정 보고서
 
 > 작성일: 2026-09-15 · 담당: Yejin · 관련 작업: 착수 전 결정 검증 "1번 — AI가 얼마나 오래 걸리는지 재보기"
-> 관련 문서: [PRD.md](PRD.md) §10-5, §18 · 대상 코드: `backend/app/api/mediation.py`, `backend/app/services/openai_gateway.py`
+> 관련 문서: [API_Design.md](API_Design.md) §10-5(동기 응답 실측), §5(중재 리포트) · 대상 코드: `backend/app/api/mediation.py`, `backend/app/services/openai_gateway.py`
+>
+> **2026-09-19 갱신:** 아래 §1의 "맞고소 완료 = 2회 연속" 전제는 실제 경로와 다르다. 맞고소 제출은
+> 지금도 OpenAI를 1회만 부른다(`api/cases.py` → `services/mediation.py`). 한 요청에서 2회 연속
+> 호출이 실제로 일어나는 곳은 **대화 API**다(추출 + 발화, 최대 50초). 측정 이후 호출 경로도
+> 늘었다 — §9를 참고한다.
 
 ---
 
@@ -129,3 +134,30 @@ python -m uvicorn app.main:app --port 8000
 Measure-Command { Invoke-RestMethod -Uri http://localhost:8000/api/mediation/report `
   -Method Post -ContentType "application/json; charset=utf-8" -InFile ".\sample_report.json" }
 ```
+
+---
+
+## 9. 2026-09-19 기준 현황 (측정 이후 변화)
+
+측정 당시에는 OpenAI 호출 경로가 대화와 리포트뿐이었다. 지금은 다섯 곳이다.
+
+| 경로 | 호출 수 | 코드 |
+| --- | --- | --- |
+| 대화 1턴 | **2회 연속** (추출 + 발화) | `services/complaint_engine.py` |
+| 카드 요약 (죄명·한 줄 요약·도입문) | 1회 | `services/card_summary.py` |
+| 감정 프로파일 채점 | 1회 | `services/emotion_profile.py` |
+| 중재 리포트 | 1회 | `services/mediation.py` (B 맞고소 제출 시 `api/cases.py`가 호출) |
+
+`/api/mediation/report`를 직접 부르는 화면은 체험용 `/wireframe`뿐이다.
+
+클라이언트 타임아웃도 서버 컷(Nginx 60초)과 함께 봐야 한다.
+
+| 경로 | 클라이언트 제한 |
+| --- | --- |
+| 대화 | 65초 (`useConversation.ts`) — **Nginx 60초보다 길다** |
+| 중재(체험) | 35초 (`MediationSummary.tsx`) |
+| 감정 프로파일·이미지 | 30초 / 제한 없음 (`lib/api/emotionWarp.ts`) |
+| 사건 저장 (B 맞고소) | 60초 (`lib/api/cases.ts`) |
+
+**남은 점검:** 대화 API의 2회 연속 호출(최대 50초)과 클라이언트 65초가 Nginx 60초 컷과 어긋난다.
+운영에서 실측이 필요하다.
