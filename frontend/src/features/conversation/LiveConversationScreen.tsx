@@ -202,7 +202,7 @@ export function LiveConversationScreen({
               onChange={(e) => chat.setInput(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key !== "Enter" || e.nativeEvent.isComposing) return;
-                if (!window.matchMedia("(pointer: fine)").matches) return;
+                if (!window.matchMedia("(any-pointer: fine)").matches) return;
                 if (e.shiftKey) return;
                 e.preventDefault();
                 if (e.ctrlKey || e.metaKey) {

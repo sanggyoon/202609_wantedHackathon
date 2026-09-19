@@ -178,7 +178,7 @@ export function LinkedCaseScreen({
   const until = new Date(view.expires_at).toLocaleString("ko-KR");
   const refreshButton = (
     <Button secondary disabled={loading || busy} onClick={refresh}>
-      사건 상태 새로 확인하기
+      새로고침
     </Button>
   );
   const destroyNotice = (

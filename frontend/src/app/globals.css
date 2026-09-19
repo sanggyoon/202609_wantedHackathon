@@ -248,6 +248,9 @@ header > a {
   font-size: 14px;
   color: var(--muted);
 }
+.steps p:last-child {
+  border-bottom: none;
+}
 .steps b {
   color: var(--text);
 }
@@ -903,6 +906,10 @@ select:focus {
   aspect-ratio: 1;
   object-fit: contain;
   border-radius: 24px;
+}
+
+.hero-emotion-gray img {
+  filter: grayscale(1);
 }
 
 .emotion-warp-placeholder {
