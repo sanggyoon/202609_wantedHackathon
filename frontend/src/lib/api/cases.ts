@@ -29,6 +29,7 @@ export function casePath(token: string) {
 function validCard(v: unknown): boolean {
   return object(v) && ["incident_description", "emotion_reason", "desired_outcome"].every(k => typeof v[k] === "string")
     && strings(v.emotions)
+    && (v.emotion_scores == null || object(v.emotion_scores))
     && ["cute_charge", "incident_summary", "story_intro", "hurt_point", "expected_behavior", "assumption"].every(k => v[k] === undefined || typeof v[k] === "string")
     && (v.different_viewpoint == null || typeof v.different_viewpoint === "string");
 }

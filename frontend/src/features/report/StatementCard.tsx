@@ -1,4 +1,5 @@
 import { feelingText, type Statement } from "./types";
+import { EmotionWarpImage } from "./EmotionWarpImage";
 export function StatementCard({
   side,
   data,
@@ -28,6 +29,7 @@ export function StatementCard({
           <p className="cute-charge font-point">「{data.cute_charge}」</p>
         )
       )}
+      <EmotionWarpImage profile={data.emotion_scores} />
       <h3>사건명</h3>
       <h2>「{title}」</h2>
       <h3>신청인 · 상대방</h3>
