@@ -19,7 +19,6 @@ export function StatementCard({
     <article className={`card side-${side}${mine ? " card-mine" : ""}`}>
       {mine && <span className="badge card-mine-badge">내가 쓴 고소장</span>}
       <h2 className="doc-title font-point">고 소 장</h2>
-      <p className="doc-case">CASE #0241</p>
       {chargePending ? (
         <p className="cute-charge" role="status">
           밤톨이 죄명을 짓고 있어요…

@@ -180,6 +180,21 @@ header > a {
   display: block;
   border-radius: 32px;
 }
+/* 시작화면 3 히어로 최상단: 감정 이미지 8종 가로 나열 */
+.hero-strip {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 4px;
+  align-items: center;
+}
+.hero-strip img {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 6px;
+}
+
 .paper-duo-viewport {
   width: 100%;
   overflow: hidden;
