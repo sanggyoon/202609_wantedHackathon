@@ -204,7 +204,14 @@ export function LinkedCaseScreen({
     if (!cards.A || !cards.B || !view?.content?.report) return null;
     return (
       <>
-        <StartScreen entryMode="result" resultTab="counterclaim" notice={destroyNotice} onStart={() => {}} />
+        <StartScreen
+          entryMode="result"
+          resultTab="counterclaim"
+          emotionA={cards.A.emotion_scores}
+          emotionB={cards.B.emotion_scores}
+          notice={destroyNotice}
+          onStart={() => {}}
+        />
         <CounterclaimResult
           a={cards.A}
           b={cards.B}
