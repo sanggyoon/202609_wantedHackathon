@@ -56,11 +56,13 @@ export function StartScreen({
       않는 와이어프레임 체험입니다.
     </>
   ),
+  busy = false,
   onStart,
 }: {
   entryMode?: EntryMode;
   resultTab?: ResultEnding;
   notice?: ReactNode;
+  busy?: boolean;
   onStart: (ending?: ResultEnding) => void;
 }) {
   const c = copy[entryMode];
@@ -125,7 +127,9 @@ export function StartScreen({
           <div className="cta-float-spacer" aria-hidden="true" />
           <div className="cta-float">
             <div className="cta-float-inner cta-float-inner-auto">
-              <Button onClick={() => onStart()}>{c.cta}</Button>
+              <Button disabled={busy} onClick={() => onStart()}>
+                {busy ? "사건을 준비하고 있어요…" : c.cta}
+              </Button>
             </div>
           </div>
         </>
