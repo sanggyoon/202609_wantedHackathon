@@ -39,27 +39,35 @@ backend/app/
   api/cases.py                 POST /api/cases, GET /api/cases/{token}
   api/card_summary.py          POST /api/complaint/card-summary
   api/conversation.py          POST /api/complaint/conversation/message
+  api/emotion_warp.py          POST /api/complaint/emotion-profile(/resolve), /emotion-warp
   api/mediation.py             POST /api/mediation/report
+  core/config.py               환경변수 설정 (OPENAI_*, DATABASE_URL, CORS)
   db.py                        지연 생성 커넥션 풀
   core/tokens.py               토큰 발급·해시·상수시간 비교
   repositories/cases.py        사건 영속 계층 (SQL은 여기에만)
   schemas/case.py              사건 뷰 모델, available_actions 표
-  schemas/card_summary.py      카드 요약(죄명·한 줄 요약) 모델
-  schemas/complaint.py         대화 상태·요청·응답 모델
+  schemas/card_summary.py      카드 요약(죄명·한 줄 요약·도입문) 모델
+  schemas/complaint.py         대화 상태·요청·응답 모델, SharedStatement
+  schemas/emotion_warp.py      감정 프로파일·왜곡 요청 모델
   schemas/mediation.py         리포트 모델
-  services/complaint_engine.py 대화 처리 (1,125줄)
+  services/complaint_engine.py 대화 처리 (약 1,100줄)
   services/mediation.py        리포트 생성
-  services/card_summary.py     죄명·한 줄 요약 생성과 형식 검증
+  services/card_summary.py     죄명·한 줄 요약·도입문 생성과 형식 검증
+  services/emotion_profile.py  감정 채점, 대표 이미지, 6축 계산
+  services/emotion_warp.py     자산 로딩, Warp 호출, PNG 인코딩
+  services/warp_hexagon.py     육각형 6방향 볼록 왜곡 (프로토타입 이식)
   services/openai_gateway.py   OpenAI 호출
   services/bamtol_voice.py     페르소나 문구
   services/emotion_evidence.py 감정 근거 추출
+  assets/emotions/             감정 이미지 8장 + 폴백 asset1.png
 ```
 
 | 기능 (`Frontend_Architecture.md` §9) | 상태 |
 | --- | --- |
 | AI 대화 | **구현됨** — §4 |
 | 맞고소 리포트 생성 | **구현됨** — §5 |
-| 카드 죄명·한 줄 요약 생성 | **구현됨** — §8-1 |
+| 카드 죄명·한 줄 요약·도입문 생성 | **구현됨** — §8-1 |
+| 감정 점수·왜곡 이미지 | **구현됨** — §6.5 |
 | 사건 작성 시작 / 조회 | **구현됨** — §6 |
 | 고소장 확정 (영속 저장) | **구현됨** — §6 |
 | 응답 방식 선택 | **구현됨** — §6 |
@@ -104,6 +112,10 @@ Supabase Transaction pooler(PgBouncer)는 prepared statement를 세션 간에 �
 "원문은 흐르되 고이지 않는다"를 더 좁은 통로로 만족시킨다.
 
 문서를 구현에 맞춘다. A-1의 표현은 "무상태"이되 그 수단은 상태 객체 왕복이다.
+
+**예외 (2026-09-19).** 대화를 마치고 초안으로 넘어가기 직전, 감정 점수를 매기려고 사용자 발화
+전체(최대 20개·8만 자)를 `/api/complaint/emotion-profile`로 한 번 더 보낸다. 이 원문은
+OpenAI로 전달되지만 서버에 저장하지 않는다.
 
 ---
 
@@ -238,7 +250,7 @@ POST /api/mediation/report
 요청·응답 모두 snake_case다.
 
 `incident_description`·`desired_outcome`만 필수(최소 1자)이고 나머지는 기본값이 있다.
-문자열은 최대 8,000자.
+문자열은 최대 8,000자다. 단 `cute_charge`는 200자, `story_intro`는 300자다.
 
 공유하지 않기로 고른 항목에는 `"공유하지 않은 내용"` 이 들어간다. 빈 값과 구별해야 하며,
 `SharedStatement.shared()`가 둘을 함께 걸러낸다.
@@ -296,7 +308,7 @@ PRD §13 "AI가 하지 않아야 하는 일"을 프롬프트가 아니라 **코�
 서버는 둘 다 SHA-256 hex 해시만 저장한다. B에게는 토큰을 주지 않는다 — "링크를 가진 사람이
 B"가 설계 전제이며(DFD §2-4), 중복 제출은 DB의 PK·UNIQUE가 막는다.
 
-### 6.2 예정 엔드포인트
+### 6.2 엔드포인트 목록
 
 | Method | Path | 상태 전이 | 상태 |
 | --- | --- | --- | --- |
@@ -344,6 +356,18 @@ B"가 설계 전제이며(DFD §2-4), 중복 제출은 DB의 PK·UNIQUE가 막�
 B가 입력한 텍스트를 **그대로** 저장한다. AI를 호출하지 않고 파생 필드를 만들지 않는다
 (PRD §13, DFD §8.2).
 
+### 6.5 감정 프로파일·왜곡 이미지 — **구현됨 (2026-09-19)**
+
+| Method | Path | 응답 | 비고 |
+| --- | --- | --- | --- |
+| `POST` | `/api/complaint/emotion-profile` | `{profile, needs_clarification, candidates, mode}` | 사용자 발화(최대 20개·8만 자)로 감정 채점 |
+| `POST` | `/api/complaint/emotion-profile/resolve` | 같은 형태 | 동률일 때 사용자가 고른 라벨로 확정, 후보 밖이면 422 |
+| `POST` | `/api/complaint/emotion-warp` | **`image/png` 바이너리** | 스냅샷으로 왜곡 이미지 생성, 실패 시 503 |
+
+세 경로 모두 저장하지 않고 `Cache-Control: no-store`를 붙인다. 확정된 프로파일은 카드의
+`emotion_scores`로 함께 저장되며, 저장된 사건도 같은 `/emotion-warp`로 이미지를 재생성한다.
+사양은 `Emotion_Image_Warp_PRD.md`.
+
 ---
 
 ## 7. 오류 규약
@@ -361,6 +385,9 @@ FastAPI 기본 형식을 쓴다.
 | `message`가 공백 | 400 | `Message must not be blank` | `conversation.py` |
 | 대화 처리 실패 | 502 | `Conversation processing failed. Please retry.` | `conversation.py` |
 | 리포트 생성 실패 | 502 | `Report generation failed. Please retry.` | `mediation.py` |
+| 카드 요약 생성 실패 | 502 | `Card summary generation failed. Please retry.` | `card_summary.py` |
+| 감정 선택이 후보 밖 | 422 | `Invalid emotion selection` | `emotion_warp.py` |
+| 감정 이미지 생성 실패 | 503 | `Emotion image unavailable` | `emotion_warp.py` |
 | 요청 형식 오류 | 422 | `Invalid request` | `main.py` 전역 핸들러 |
 
 502 응답은 **provider 예외를 노출하지 않는다.** `raise ... from None`으로 원인 체인을 끊고
@@ -493,7 +520,7 @@ alter table apologies       add column admitted_point    text;
 - 코드가 형식을 한 번 더 막는다. 죄명은 "죄"로 끝나는 2~12자, 요약은 60자 이내,
   도입문은 30~180자이며 같은 응답의 죄명을 그대로 포함해야 한다. 벗어나면 자르지 않고
   `""`로 비운다. 사건 내용이 `"공유하지 않은 내용"`이면 요약과 도입문은 항상 `""`.
-- local 모드: 요약은 사건 내용 첫 문장, 죄명과 도입문은 `""`.
+- local 모드: 요약은 사건 내용 첫 문장, 죄명과 도입문은 `""`. 첫 문장이 60자를 넘으면 요약도 비운다.
 - 실패 시 502 `{"detail": "Card summary generation failed. Please retry."}`. 접수는 막지 않는다.
 
 `different_viewpoint`는 **아직 생성하지 않는다.** A 카드만 있는 시점에 채우려면 상대 관점을
@@ -514,11 +541,11 @@ alter table apologies       add column admitted_point    text;
 
 §7.2 참고. HTTP 상태 코드가 기계 판독용 구분을 이미 제공하므로 `code` 필드를 두지 않는다.
 
-### 8-4. 사건 식별자가 없다 — **구현 대기**
+### 8-4. 사건 식별자가 없다 — **부분 해소**
 
-`conversationId`의 기본값이 `"temp"`이고 서버는 이 값을 그대로 되돌려줄 뿐 아무 의미를
-부여하지 않는다. 현재 API는 **어느 사건의 대화인지 알지 못한다.** §6이 구현되면
-`public_token`이 그 역할을 맡는다.
+§6이 구현돼 `public_token`이 사건 식별자 역할을 한다. 다만 대화 엔드포인트는 여전히
+`conversationId`의 기본값 `"temp"`를 그대로 되돌려줄 뿐이어서, **대화 API는 어느 사건의
+대화인지 알지 못한다.**
 
 ### 8-5. 문서가 틀렸던 것 — **문서 수정 완료**
 
@@ -542,7 +569,7 @@ DFD §9의 검수 항목 중 **구현이 책임지는 것**들이다. 상당수�
 | 응답 캐싱 | **구현됨** | 대화·리포트 응답에 `Cache-Control: no-store` |
 | 외부 AI 제공자 보관 | **구현됨** | OpenAI 호출에 `store=False` — §10 참고 |
 | OpenAI 로깅 | **구현됨** | `openai_gateway`가 요청·응답 본문을 로그에 남기지 않음 |
-| 서버 영속 저장 | **구현됨(구조적)** | DB 접근 코드 자체가 없음 |
+| 서버 영속 저장 | **구현됨(구조적)** | 스키마에 원문 컬럼이 없고, 저장 계층(`repositories/cases.py`)이 확정 카드·리포트·사과문만 기록 |
 | 접근 로그의 토큰 | **미구현 — 이제 실제로 토큰이 URL에 실린다** | §10-1 |
 | 분석 이벤트 | **해당 없음** | 분석 도구 미도입 |
 
@@ -585,12 +612,9 @@ select status, start_time, return_message
   from cron.job_run_details order by start_time desc limit 5;
 ```
 
-9번은 이번 조사에서 드러난 것이다. 배포된 백엔드에 `OPENAI_API_KEY`가 전달되지 않아
-**운영 환경의 AI 대화가 규칙 기반 폴백(`mode: "local"`)으로 동작하고 있다.** DB 접속 코드를
-추가해도 `DATABASE_URL`이 없으면 같은 문제를 겪는다.
-
-5번은 A-2(동기)의 유일한 실질 위험이다. OpenAI 타임아웃이 25초이고 맞고소 경로는 호출이
-2회이므로 최악 50초가 나올 수 있다. Nginx 기본 `proxy_read_timeout`은 60초라 아슬아슬하다.
+5번(동기 응답 시간)은 대상 경로가 바뀌었다. 맞고소 제출은 OpenAI를 1회만 부르고, 한 요청에서
+2회 연속 호출이 일어나는 곳은 **대화 API**(추출 + 발화, 최대 50초)다. 프론트 대화 타임아웃
+65초가 Nginx 기본 `proxy_read_timeout` 60초보다 길다 — `AI_Latency_Report.md` §9 참고.
 
 ### 해소된 항목
 
@@ -603,7 +627,7 @@ select status, start_time, return_message
 
 ## 11. 구현 순서
 
-PRD §18에 맞춘다. 2·4단계는 이미 끝났고, 남은 것은 사건 계층이다.
+PRD §18에 맞춘다. 0~5단계가 모두 끝났고 남은 것은 6단계(안전·품질 검증)뿐이다.
 
 | 단계 | 내용 | 상태 |
 | --- | --- | --- |
