@@ -5,7 +5,8 @@
 - 홈의 시작하기 → POST /api/cases → /case/[token] 이동.
 - API 어댑터: frontend/src/lib/api/cases.ts. 생성/조회 요청, 런타임 응답 검증,
   15초 제한, no-store, 원문 서버 오류를 노출하지 않는 오류 변환.
-- 로컬 Next 개발 서버에서 /api/cases 경로를 백엔드로 전달.
+- 로컬 Next 개발 서버가 /api/cases, /api/mediation, /api/complaint/{conversation,card-summary,
+  emotion-profile,emotion-warp}를 127.0.0.1:8000으로 전달한다(운영은 nginx).
 - 조회 결과의 viewer_role·status·available_actions로 작성 가능 여부 결정.
 - 저장 API 연결 (2026-09-17): A 접수(`statement` A), B 사과(`response-type` → `apology`),
   B 맞고소(`response-type` → `statement` B). 단계는 `caseStage`가 status·viewer_role·
@@ -16,6 +17,9 @@
   저장 여부를 확인한다. POST는 자동 재시도하지 않는다.
 - 완료 사건은 저장된 카드·리포트·사과만 표시한다. 새로운 AI 리포트를 임의로 생성하지 않는다.
 - 화면은 체험판(`/wireframe`)과 같은 컴포넌트(`features/case/screens/`)를 쓴다.
+- A/B 모두 초안 확인 전에 감정 프로파일 분석이 한 번 들어간다(실패해도 접수는 계속된다).
+  검토 화면에 들어가면 죄명·한 줄 요약·도입문을 카드 요약 API로 생성하고, 사용자가 수정하거나
+  다시 만들 수 있다.
 - 저장된 A 카드가 존재하고 DRAFT가 아닐 때 작성자에게 링크 복사/공유 제공.
   클립보드 실패 시 직접 선택 가능한 URL, 공유 미지원 시 복사로 대체.
 - 404/410은 내용을 제거하고 안내. 일시적인 재조회 실패는 기존 입력을 유지.
@@ -48,7 +52,7 @@
 
 ## 검증 및 실행
 
-- frontend에서 npm test: API/권한 저장소 회귀 테스트 16개 (fetch·storage 대체).
+- frontend에서 npm test: API·권한 저장소·단계 판정·카드 요약 회귀 테스트 47개 (fetch·storage 대체).
 - npm run lint, npm run build 통과.
 - 브라우저에서 홈의 시작하기 → 저장 서버 미설정(503) 안내 확인.
 - 현재 로컬 설정에 DATABASE_URL이 없어 실제 DB 생성·조회 성공 검증은 미수행.

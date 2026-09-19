@@ -31,11 +31,14 @@
 | 경로 별칭 | `@/*` → `src/*` |
 | 배포 | `output: standalone` |
 | 명령 | `npm run dev`, `npm run lint`, `npm run build`, `npm start` |
-| 화면 | `src/app/page.tsx`의 Next.js 기본 시작 화면 |
-| 전역 설정 | 기본 영문 메타데이터, Geist 서체, 기본 다크모드 스타일 |
-| 미구현 | 제품 화면, 공통 UI, API 연결, 사건 상태 관리, 테스트 구성 |
+| 화면 | 제품 홈(`src/app/page.tsx`), 사건 화면(`src/app/case/[token]/page.tsx`), 체험(`src/app/wireframe`) |
+| 전역 설정 | 한국어 메타데이터, Pretendard·BMkkubulim 서체, 전역 검색 색인 차단 |
+| 애니메이션 | framer-motion 13 |
+| 테스트 | `npm test` — `node --test`로 어댑터·단계 판정 회귀 테스트 |
 
-`public`에는 기본 Next.js 예제 SVG만 있다. Lucide와 별도 상태 관리 라이브러리는 설치되어 있지 않다.
+**2026-09-19 기준.** 제품 화면·공통 UI(`components/ui`)·API 어댑터 5종(`lib/api/`)·사건 상태
+관리·회귀 테스트가 모두 구현됐다. `public/images/`에는 감정 이미지 9종과 사과 아이콘이 있다.
+Lucide와 별도 상태 관리 라이브러리는 여전히 설치하지 않았다(아이콘은 텍스트 글리프와 PNG).
 
 코드 작성 전 `frontend/AGENTS.md`에 따라 설치된 `node_modules/next/dist/docs/`의 관련 가이드를 읽는다. 의존성이 없다면 잠금 파일 기준으로 설치한 뒤 확인한다. 이 문서는 화면과 책임 설계를 정의하며 버전별 API 사용법을 대체하지 않는다.
 
@@ -77,7 +80,12 @@
 | `APOLOGY_COMPLETED` | 사과 카드와 종결 리포트 | 내용 열람 |
 | `EXPIRED` | 만료 안내 | 새 사건 시작 |
 
-작성 중인 사람 이외의 방문자에게는 대기 화면을 표시하는 것을 기본 설계로 한다. 이를 보장할 작성 권한 계약은 백엔드와 확정해야 한다. 다른 기기에서 작성자 역할을 복구하는 기능은 아직 확정하지 않는다.
+작성 중인 사람 이외의 방문자에게는 대기 화면을 표시한다.
+
+**확정·구현됨 (2026-09-17).** 작성 권한은 사건 생성 시 발급한 `writer_token`을 `X-Writer-Token`
+헤더로 보내 확인하고, 브라우저 localStorage에 보관한다. 같은 브라우저의 다른 탭에서는 A로
+인식되고 다른 기기에서는 B로 보인다. 화면은 서버가 준 `status`·`viewer_role`·`available_actions`로
+정한다(`features/case/caseStage.ts`).
 
 완료 화면에는 편집·재제출 CTA를 두지 않는 것을 초기안으로 사용한다. 실제 재제출 차단은 서버 책임이며 답변 수정 정책 확정에 따라 조정한다.
 
@@ -100,36 +108,43 @@
 
 ## 7. 폴더 구조와 책임
 
-다음 구조는 구현 목표이며 현재 모두 존재하는 것은 아니다. 각 화면 구현 시 필요한 파일만 추가한다.
+2026-09-19 기준 실제 구조다. 하위 폴더를 두지 않고 기능 폴더에 파일을 평평하게 둔다.
 
 ```text
 frontend/src/
   app/
     layout.tsx                  # 한국어, 공통 메타데이터·viewport·전역 스타일
     globals.css                 # 디자인 토큰과 기본 스타일
-    page.tsx                    # 시작 화면 조합
-    case/[token]/
-      page.tsx                  # 사건 화면 진입
-      loading.tsx               # 초기 로딩
-      error.tsx                 # 경로 단위 예외 복구
+    page.tsx                    # 제품 홈
+    case/[token]/page.tsx       # 실제 사건 화면 진입 (loading·error 파일은 없음)
+    wireframe/page.tsx          # 가상 사건 체험
   components/
-    ui/                         # Button, Textarea, Badge, Dialog, Toast, Skeleton
-    layout/                     # AppShell, Header, BottomActionBar
+    ui/index.tsx                # Button, Heading, Notice, Toast
+    layout/AppShell.tsx         # 헤더·푸터·개발용 탭 슬롯
   features/
     case/
-      components/               # CaseController, 상태별 화면, 공유·대기 UI
-      hooks/                    # 사건 조회와 상태 갱신
-      types.ts                  # 사건 모델·상태
+      LinkedCaseScreen.tsx      # 조회·단계 분기·제출 처리
+      caseStage.ts              # 상태×역할×행동 → 단계 판정, 실패 판정
+      ADraftFlow.tsx            # A 대화 → 검토 → 접수
+      BResponseFlow.tsx         # B 소환장 → 사과/맞고소 → 제출
+      ShareCaseLink.tsx         # 실제 링크 복사·공유
+      writerSession.ts          # 작성 권한 보관 (localStorage)
+      CreateCaseButton.tsx      # 사건 생성
+      StartScreen.tsx           # 시작화면 1/2/3
+      CaseController.tsx        # 체험(/wireframe) 전용 화면 전환
+      ShareSelectScreen.tsx     # 미사용 — 공유 선택 단계 제거 후 남은 파일
+      screens/                  # SummonsSent, SummonsArrived, Waiting, CounterclaimResult, ApologyResult, CaseGone
     conversation/
-      components/               # MessageList, Composer, SummaryEditor
-      hooks/                    # 대화·스트림·일시적 초안 상태
-      types.ts
+      LiveConversationScreen.tsx, useConversation.ts, ConversationScreen.tsx, types.ts
     report/
-      components/               # StatementCard, ApologyCard, MediationSummary
+      StatementCard.tsx, StatementSummary.tsx, PreviewScreen.tsx, ApologyScreen.tsx,
+      MediationSummary.tsx, MediationReport.tsx, EmotionWarpImage.tsx, types.ts
   lib/
-    api/                        # 요청 처리, 오류 변환, 도메인 API 어댑터
-  mocks/                        # 개발용 가상 사건·응답 및 어댑터
+    api/                        # cases, conversation, mediation, cardSummary, emotionWarp
+  mocks/Wireframe.tsx           # 체험용 가상 사건 데이터
 ```
+
+사건 모델 타입은 `features/case/types.ts`가 아니라 `lib/api/cases.ts`에 있다.
 
 경로 파일은 화면을 조합하고, 기능별 폴더는 제품 동작을 담당한다. 공통 UI는 사건 상태나 API를 직접 알지 않는다. A/B 대화와 카드는 역할·데이터를 인자로 받아 재사용한다.
 
@@ -140,9 +155,10 @@ frontend/src/
 - `app → mocks의 조합 컴포넌트 → case 컨트롤러 → 대화·리포트 화면 → 공통 UI` 방향으로만 참조한다.
 - 컨트롤러는 화면 전환과 완료된 결과를 관리한다. 입력과 편집은 개별 화면이 소유한다.
 - `features`, `components`는 `mocks`를 직접 import하지 않는다. 데이터와 질문은 props로 주입한다.
-- 이번 구현은 `/wireframe`의 검토용 흐름이다. 가상 화면 선택기는 이 경로에만 제공한다.
-- 실제 사건 URL, API, 저장, 공유, 만료는 후속 작업이다. 가상 데이터로 이를 구현했다고 표시하지 않는다.
-- 입력값은 미리보기에 그대로 반영한다. 실제 AI 중재 영역은 분석 결과 대신 자리 표시자로 제공한다.
+- 위 규칙은 `/wireframe` 체험 흐름에 대한 것이다. 가상 화면 선택기는 이 경로에만 제공한다.
+- 실제 사건 URL·저장·공유·만료는 2026-09-17에 연결됐다(`app/case/[token]`, `LinkedCaseScreen`).
+- 입력값은 미리보기에 그대로 반영한다. 중재 정리는 실제 API 결과를 쓴다 — 체험은 요청해서,
+  실제 사건은 저장된 리포트를 표시만 한다.
 
 - 공통 레이아웃과 정적 소개 영역은 서버 렌더링을 기본으로 한다.
 - 채팅, 입력, 미리보기 수정, 공유, 사건 상태 전환은 필요한 영역에 Client Component를 사용한다.
@@ -182,7 +198,7 @@ frontend/src/
 - 기본 배경은 문서의 단순 그라디언트 안인 `linear-gradient(-7deg, #FAFAFA 26%, #F0EFEE 84%)`로 통일한다.
 - 기본 UI는 Pretendard, 포인트 서체는 제목·죄명 등 제한된 위치에 사용한다. 포인트 서체 파일 경로와 사용 조건은 적용 전에 확인한다.
 - 기존 Geist·Arial·자동 다크모드 설정을 디자인 시스템으로 교체한다. 다크모드는 현재 설계 범위에 없다.
-- 아이콘은 Lucide를 사용하며 필요한 시점에 의존성을 추가한다.
+- 아이콘 라이브러리는 아직 없다. 텍스트 글리프(↗ ↑ ✓)와 PNG를 쓴다. Lucide는 도입 후보다.
 - A/B 전용 색은 아직 토큰이 없으므로 시각 작업에서 추가 확정한다. 색뿐 아니라 역할 레이블도 함께 표시한다.
 - 터치 영역은 최소 48×48px, 하단 안전 영역을 확보한다.
 - 채팅 응답 대기, 스트리밍, 오류는 각각 구분한다. 스트리밍 구현 여부는 백엔드 계약에 따른다.
@@ -191,7 +207,7 @@ frontend/src/
 
 | 상황 | 처리 |
 | --- | --- |
-| 초기 로딩 | 카드·화면 구조와 맞는 스켈레톤 |
+| 초기 로딩 | 실제 사건 화면은 한 줄 상태 텍스트. 스켈레톤은 `/wireframe`의 '심리 준비' 예시 화면에만 있다 |
 | AI 응답 대기 | 타이핑 표시, 중복 전송 방지 |
 | 생성 실패 | 현재 메모리 입력 유지, 인라인 오류와 재시도 |
 | 제출 충돌 | 최신 사건 상태를 다시 조회하고 결과 또는 대기 안내 |
@@ -199,7 +215,16 @@ frontend/src/
 | 공유 기능 미지원 | 링크 복사 제공, 복사 실패 시 직접 선택 가능한 링크 |
 | 안전상 생성 중단 | 일반 생성 실패와 구분된 안내; 구체 문구는 정책 확정 후 적용 |
 
-입력에는 레이블을 연결하고 오류 원인을 텍스트로 표시한다. 모달은 키보드 포커스 진입·복귀를 지원한다. AI 응답 알림은 토큰마다 반복 낭독하지 않도록 처리한다. 새 메시지가 와도 사용자가 과거 대화를 읽는 중이면 강제 스크롤하지 않는다. 모션 감소 설정에서는 Shimmer 효과를 줄인다.
+입력에는 레이블을 연결하고 오류 원인을 텍스트로 표시한다. 모달은 키보드 포커스 진입·복귀를 지원한다.
+
+**현재 코드와 다른 점 (2026-09-19, 후속 과제).**
+
+- 채팅 화면은 새 턴·대기·오류마다 **항상 맨 아래로 스크롤한다.** 과거 대화를 읽는 중인지 보고
+  억제하는 처리는 없다.
+- `body.chat-open` 규칙이 `.screen > .notice`를 숨긴다. 그래서 채팅 중에는 비저장 안내와
+  **대화 오류 문구가 화면에 보이지 않는다.** 오류·안내를 채팅 영역 안으로 옮겨야 한다.
+- `prefers-reduced-motion` 규칙이 아직 없다.
+- 검색 색인 차단은 사건 페이지뿐 아니라 `layout.tsx`에서 **사이트 전체**에 걸려 있다.
 
 공유 미리보기에는 서비스 소개를 사용하고 사건 본문·감정·사과문을 포함하지 않는다. 사건 페이지는 검색 색인을 차단한다.
 
@@ -223,25 +248,30 @@ frontend/src/
 > `incident`→`incident_description`, `feeling`→`emotions[]`+`emotion_reason`,
 > `wish`→`desired_outcome`, `expectation`→`expected_behavior`, `guess`→`assumption`,
 > `admitted`→`admitted_point`. 여기에 `cute_charge`·`incident_summary`·`story_intro`·
-> `different_viewpoint`가 들어왔다. 앞의 세 필드는 공유 선택 이후 카드 요약 API가 만들고
+> `different_viewpoint`가 들어왔다. 앞의 세 필드는 검토 화면 진입 시 카드 요약 API가 만들고
 > 사용자가 검토·수정하며, `different_viewpoint`만 아직 생성 주체가 없어 항상 빈 값이다.
+> 2026-09-19에 `emotion_scores`(감정 점수·대표 이미지·6축 스냅샷)가 더해졌다.
 > 자세한 매핑은 `docs/API_Design.md` §8-1.
 >
 > `feeling`은 `emotions[]`·`emotion_reason`·`hurt_point` 셋으로 갈렸다. 예전에는 이
 > 셋을 한 덩어리 텍스트로 합치면서 감정 목록이 카드 단계에서 버려지고 있었다.
 > 화면 표시용으로 합칠 때는 `types.ts`의 `feelingText()`를 쓴다 — 저장 형태가 아니다.
 >
-> 공유 항목 선택 화면의 토글 단위와 DB 필드 단위는 1:1이 아니다. "그때 느낀 감정"
-> 토글 하나가 위 세 필드를 함께 덮는다.
+> 공유 항목 선택 화면은 2026-09-18에 흐름에서 빠졌다(대화 → 검토로 직행).
+> `ShareSelectScreen.tsx`는 어디에서도 쓰지 않는 파일로 남아 있다.
 
 다음 항목은 레이아웃 설계를 막지 않지만 실제 API 연결 및 서비스 완료 전에 확정해야 한다.
 
-- 7일 만료 기준점과 초안 사건의 수명
-- 최초 작성자·응답 작성자의 권한 부여와 다른 기기 진입 처리
-- 답변 수정 가능 여부, 선택 변경, 중복·동시 제출 정책
-- 리포트 생성 중 상태와 생성 실패 시 복구
-- A/B 색상 토큰과 포인트 서체 적용 자산
-- LLM 제공자, 스트림 형식, 위험 내용 처리 문구
+**확정됨 (2026-09-17~19).** 7일 만료 기준(서버 `expires_at`), 작성 권한과 다른 기기 진입(B로 취급),
+답변 수정 불가·선택 변경(제출 전까지 가능)·중복 제출(409 후 재조회), LLM 제공자(OpenAI
+`gpt-4.1-mini`), 스트림 형식(비스트리밍), 포인트 서체(BMkkubulim).
+
+**남은 항목.**
+
+- 리포트 생성 중 상태와 생성 실패 시 복구 화면
+- A/B 색상 토큰 (현재는 "내가 쓴 고소장" 배지로만 구분)
+- 위험 내용 처리 문구와 탐지 연결
 - 링크 폐기와 작성 중 임시 복구 제공 여부
+- 화면에 남은 "7일" 고정 문구를 서버 `expires_at` 기준으로 통일
 
 만료 화면은 서버의 `expires_at`을 표시하고 프론트에서 임의로 기준점을 계산하지 않는다. 미정 기능을 확정 기능처럼 UI에 추가하지 않는다.
