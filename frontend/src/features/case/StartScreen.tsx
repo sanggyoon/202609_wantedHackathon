@@ -40,7 +40,8 @@ const copy: Record<
         결과를 함께 볼까요?
       </>
     ),
-    desc: "판결문(결과물)은 7일간 보관돼요.",
+    // 보관 기한은 서버가 준 expires_at으로만 안내한다 (notice prop).
+    desc: "",
     cta: "결과 보기 ↗",
   },
 };
@@ -106,7 +107,7 @@ export function StartScreen({
           ))}
         </small>
         <h1>{c.title}</h1>
-        <small>{c.desc}</small>
+        {c.desc && <small>{c.desc}</small>}
       </section>
       {entryMode === "new" && (
         <div className="steps">

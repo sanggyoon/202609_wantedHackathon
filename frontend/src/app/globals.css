@@ -260,7 +260,8 @@ footer {
 /* 채팅 UI(진술 화면)에서는 하단 안내 영역을 완전히 숨겨, 입력창이 카카오톡처럼
    화면 맨 아래에 붙고 모바일 키보드가 열릴 때 그대로 밀려 올라가게 한다. */
 body.chat-open footer,
-body.chat-open .screen > .notice {
+/* 대화 중에는 배경 설명만 접는다. 오류·상태(role 있는 것)는 그대로 보여준다. */
+body.chat-open .screen > .notice:not([role]) {
   display: none;
 }
 body.chat-open .screen {
