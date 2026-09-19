@@ -50,8 +50,9 @@ A(신청인)                                  B(상대방)
 - 대화 원문은 저장하지 않는다. 확정된 카드·리포트·사과문만 DB에 남는다.
 - 중복 제출은 DB 제약과 상태 조건부 UPDATE가 막고, 진 쪽은 최신 결과 화면으로 이동한다.
 
-체험용 화면 `/wireframe`은 가상 사건으로 모든 화면을 둘러보는 경로다. 저장·링크 발급은 하지 않지만
-대화·중재·죄명 생성은 실제 API를 쓴다.
+체험용 경로 `/wireframe`은 실제 사건 화면에 **가짜 사건 서버**(`mocks/demoCaseApi.ts`)를 주입해
+렌더한다. 화면 문구와 구성이 실제와 같고, 저장·링크 발급만 일어나지 않는다. 하단 개발용 패널에서
+화면을 직접 고를 수 있다.
 
 ---
 
@@ -137,6 +138,7 @@ CI(`.github/workflows/ci.yml`)가 PR마다 같은 검사를 돌린다.
 │   ├── src/components/         공통 UI(Button·Heading·Notice·Toast), AppShell
 │   ├── src/features/
 │   │   ├── case/               링크 화면·단계 판정·A/B 흐름·작성 권한 (screens/에 상태별 화면)
+│   │   │                        실제/체험이 같은 화면을 쓰고 서버만 갈아끼운다
 │   │   ├── conversation/       채팅 화면과 대화 상태
 │   │   └── report/             고소장 카드, 검토·사과 화면, 중재 리포트, 감정 이미지
 │   ├── src/lib/api/            서버 어댑터 — cases, conversation, mediation, cardSummary, emotionWarp

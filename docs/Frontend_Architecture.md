@@ -125,15 +125,14 @@ frontend/src/
     layout/AppShell.tsx         # 헤더·푸터·개발용 탭 슬롯
   features/
     case/
-      LinkedCaseScreen.tsx      # 조회·단계 분기·제출 처리
+      LinkedCaseScreen.tsx      # 조회·단계 분기·제출 처리 (api prop으로 서버를 갈아끼울 수 있다)
       caseStage.ts              # 상태×역할×행동 → 단계 판정, 실패 판정
       ADraftFlow.tsx            # A 대화 → 검토 → 접수
       BResponseFlow.tsx         # B 소환장 → 사과/맞고소 → 제출
       ShareCaseLink.tsx         # 실제 링크 복사·공유
       writerSession.ts          # 작성 권한 보관 (localStorage)
-      CreateCaseButton.tsx      # 사건 생성
-      StartScreen.tsx           # 시작화면 1/2/3
-      CaseController.tsx        # 체험(/wireframe) 전용 화면 전환
+      StartCase.tsx             # 제품 홈 — 시작화면 1 + 사건 생성
+      StartScreen.tsx           # 시작화면 1/2/3 (표시 전용)
       ShareSelectScreen.tsx     # 미사용 — 공유 선택 단계 제거 후 남은 파일
       screens/                  # SummonsSent, SummonsArrived, Waiting, CounterclaimResult, ApologyResult, CaseGone
     conversation/
@@ -143,10 +142,16 @@ frontend/src/
       MediationSummary.tsx, MediationReport.tsx, EmotionWarpImage.tsx, types.ts
   lib/
     api/                        # cases, conversation, mediation, cardSummary, emotionWarp
-  mocks/Wireframe.tsx           # 체험용 가상 사건 데이터
+  mocks/
+    Wireframe.tsx               # 체험 화면 전환 + 개발용 패널
+    demoCaseApi.ts              # 가짜 사건 서버 — 실제 화면에 그대로 주입한다
 ```
 
 사건 모델 타입은 `features/case/types.ts`가 아니라 `lib/api/cases.ts`에 있다.
+
+**2026-09-19 개편.** 체험 경로(`/wireframe`)가 별도 화면 컨트롤러를 두지 않고, 실제 사건 화면
+(`LinkedCaseScreen`)에 가짜 사건 서버(`mocks/demoCaseApi.ts`)를 주입해 렌더한다. 덕분에 체험과
+실제가 같은 코드·같은 문구를 쓴다. `CaseController.tsx`는 이때 삭제됐다.
 
 경로 파일은 화면을 조합하고, 기능별 폴더는 제품 동작을 담당한다. 공통 UI는 사건 상태나 API를 직접 알지 않는다. A/B 대화와 카드는 역할·데이터를 인자로 받아 재사용한다.
 
