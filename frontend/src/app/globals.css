@@ -525,6 +525,25 @@ body.chat-open .dev-dock {
 .panel > .notice {
   margin: 16px 0;
 }
+.reconciliation-quote {
+  margin: 0;
+  padding: 4px 0 4px 16px;
+  border-left: 3px solid var(--primary);
+}
+.reconciliation-quote p {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.7;
+  color: var(--text);
+}
+.reconciliation-quote cite {
+  display: block;
+  margin-top: 10px;
+  font-style: normal;
+  font-size: 13px;
+  color: var(--muted);
+  text-align: right;
+}
 .typing-notice {
   display: flex;
   align-items: center;

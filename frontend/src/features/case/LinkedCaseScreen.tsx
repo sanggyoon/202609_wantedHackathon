@@ -11,6 +11,7 @@ import { caseStage, failureAction } from "./caseStage";
 import { ShareCaseLink } from "./ShareCaseLink";
 import { StartScreen } from "./StartScreen";
 import { ApologyResult } from "./screens/ApologyResult";
+import { pickReconciliationQuote } from "./reconciliationQuotes";
 import { CaseGoneScreen } from "./screens/CaseGoneScreen";
 import { CounterclaimResult } from "./screens/CounterclaimResult";
 import { SummonsSentScreen } from "./screens/SummonsSentScreen";
@@ -188,14 +189,15 @@ export function LinkedCaseScreen({
   );
   function apologyResult() {
     if (!cards.A || !view?.content?.apology) return null;
+    const quote = pickReconciliationQuote(token);
     return (
       <>
         <StartScreen entryMode="result" resultTab="apology" notice={destroyNotice} onStart={() => {}} />
         <ApologyResult complaint={cards.A} apology={view.content.apology}>
-          <p>
-            B의 사과문이 저장됐어요. 위 카드에는 직접 적은 내용만 담았고, AI가
-            사과나 약속을 추가하지 않았어요.
-          </p>
+          <blockquote className="reconciliation-quote">
+            <p>{quote.text}</p>
+            <cite>— {quote.author}</cite>
+          </blockquote>
         </ApologyResult>
       </>
     );
