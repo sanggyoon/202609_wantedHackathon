@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse
 from app.api.card_summary import router as card_summary_router
 from app.api.cases import router as cases_router
 from app.api.conversation import router as conversation_router
+from app.api.emotion_warp import router as emotion_warp_router
 from app.api.health import router as health_router
 from app.api.mediation import router as mediation_router
 from app.core.config import settings
@@ -28,6 +29,7 @@ app.include_router(health_router, prefix="/api")
 app.include_router(cases_router, prefix="/api")
 app.include_router(card_summary_router, prefix="/api")
 app.include_router(conversation_router, prefix="/api")
+app.include_router(emotion_warp_router, prefix="/api")
 app.include_router(mediation_router, prefix="/api")
 
 
