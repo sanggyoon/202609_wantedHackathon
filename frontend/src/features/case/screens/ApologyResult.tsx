@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Heading, Notice } from "@/components/ui";
+import { EmotionWarpImage } from "@/features/report/EmotionWarpImage";
 import type { Statement } from "@/features/report/types";
 
 // 서버에 저장된 사과문은 선택 항목이 null로 올 수 있다.
@@ -24,6 +25,7 @@ export function ApologyResult({
       <Heading label="심리 종결 · 화해 성립" title="미안한 마음이 도착했어요.">
         여기까지 오느라 고생 많았어요. 두 분의 이야기를 천천히 읽어봐요.
       </Heading>
+      <EmotionWarpImage profile={complaint.emotion_scores} />
       <Notice>
         신청인(A)의 사건: {complaint.incident_summary || complaint.incident_description}
       </Notice>

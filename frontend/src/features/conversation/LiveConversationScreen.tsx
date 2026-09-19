@@ -1,8 +1,14 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button, Notice } from "@/components/ui";
 import type { Statement } from "@/features/report/types";
 import { useConversation } from "./useConversation";
+import {
+  requestEmotionProfile,
+  resolveEmotionProfile,
+  type EmotionProfileResult,
+} from "@/lib/api/emotionWarp";
+import type { EmotionLabel, EmotionProfile } from "@/features/report/types";
 export function LiveConversationScreen({
   side = "A",
   sharedStatement,
@@ -13,6 +19,9 @@ export function LiveConversationScreen({
   onComplete: (value: Statement) => void;
 }) {
   const chat = useConversation(side, sharedStatement);
+  const [profilePending, setProfilePending] = useState(false);
+  const [profileError, setProfileError] = useState("");
+  const [clarification, setClarification] = useState<EmotionProfileResult | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
     const el = textareaRef.current;
@@ -23,6 +32,55 @@ export function LiveConversationScreen({
     el.style.height = `${el.scrollHeight}px`;
   }, [chat.input]);
   const state = chat.latest?.state;
+
+  function complete(profile?: EmotionProfile) {
+    if (!state) return;
+    onComplete({
+      incident_description: state.incident.description || state.incident.facts.join(" "),
+      emotions: state.emotion.emotions,
+      emotion_scores: profile,
+      emotion_reason: state.emotion.reason || "",
+      hurt_point: state.hurtPoint || "",
+      desired_outcome: state.desiredOutcome || "",
+      expected_behavior: state.expectedBehavior || "",
+      assumption: state.incident.assumptions.join("\n"),
+      sourceMode: chat.latest?.mode,
+    });
+  }
+
+  async function prepareDocument() {
+    if (!state || profilePending) return;
+    const controller = new AbortController();
+    setProfilePending(true);
+    setProfileError("");
+    try {
+      const result = await requestEmotionProfile(
+        chat.turns.map((turn) => turn.text),
+        state.emotion.emotions,
+        controller.signal,
+      );
+      if (result.needs_clarification) setClarification(result);
+      else complete(result.profile);
+    } catch {
+      setProfileError("감정 이미지는 나중에 준비할게요. 고소장 내용은 그대로 확인할 수 있어요.");
+      complete();
+    } finally {
+      setProfilePending(false);
+    }
+  }
+
+  async function chooseEmotion(label: EmotionLabel) {
+    if (!clarification || profilePending) return;
+    setProfilePending(true);
+    try {
+      const result = await resolveEmotionProfile(clarification.profile, label);
+      complete(result.profile);
+    } catch {
+      setProfileError("감정을 고르지 못했어요. 다시 선택해주세요.");
+    } finally {
+      setProfilePending(false);
+    }
+  }
   useEffect(() => {
     window.scrollTo({ top: document.body.scrollHeight });
   }, [chat.turns.length, chat.pending, chat.pendingTurn, chat.error, state]);
@@ -65,7 +123,13 @@ export function LiveConversationScreen({
           <div key={i}>
             <div className="reply">
               <p>{turn.text}</p>
-              <button disabled={chat.pending} onClick={() => chat.edit(i)}>
+              <button
+                disabled={chat.pending}
+                onClick={() => {
+                  setClarification(null);
+                  chat.edit(i);
+                }}
+              >
                 진술 수정
               </button>
             </div>
@@ -160,28 +224,39 @@ export function LiveConversationScreen({
           고칠 수 있어요.
         </Notice>
       )}
+      {clarification && (
+        <section className="panel emotion-choice">
+          <h3>지금 마음에서 가장 크게 남은 감정은 무엇인가요?</h3>
+          <p>고소장에 들어갈 표정을 고르는 데만 사용할게요.</p>
+          <div className="actions">
+            {clarification.candidates.map((label) => (
+              <Button
+                key={label}
+                secondary
+                disabled={profilePending}
+                onClick={() => void chooseEmotion(label)}
+              >
+                {label}
+              </Button>
+            ))}
+          </div>
+        </section>
+      )}
+      {profileError && <Notice>{profileError}</Notice>}
       {state?.readyToGenerate && (
         <Button
           disabled={
-            chat.pending || chat.editing !== null || !!chat.input.trim()
+            chat.pending ||
+            profilePending ||
+            clarification !== null ||
+            chat.editing !== null ||
+            !!chat.input.trim()
           }
-          onClick={() =>
-            onComplete({
-              // 대화 상태의 구조를 그대로 옮긴다. 예전에는 감정 셋을 한 덩어리
-              // 텍스트로 합치면서 emotions[]가 통째로 버려졌다.
-              incident_description:
-                state.incident.description || state.incident.facts.join(" "),
-              emotions: state.emotion.emotions,
-              emotion_reason: state.emotion.reason || "",
-              hurt_point: state.hurtPoint || "",
-              desired_outcome: state.desiredOutcome || "",
-              expected_behavior: state.expectedBehavior || "",
-              assumption: state.incident.assumptions.join("\n"),
-              sourceMode: chat.latest?.mode,
-            })
-          }
+          onClick={() => void prepareDocument()}
         >
-          {side === "A" ? "고소장" : "맞고소장"} 초안 확인하기 →
+          {profilePending
+            ? "감정 이미지를 준비하고 있어요…"
+            : `${side === "A" ? "고소장" : "맞고소장"} 초안 확인하기 →`}
         </Button>
       )}
     </>

@@ -89,6 +89,7 @@ export function ShareSelectScreen({
                   ? data.incident_description
                   : NOT_SHARED,
                 emotions: selected.feeling ? data.emotions : [],
+                emotion_scores: selected.feeling ? data.emotion_scores : null,
                 emotion_reason: selected.feeling
                   ? data.emotion_reason
                   : NOT_SHARED,

@@ -10,6 +10,8 @@ dependencies = [
     "pydantic-settings>=2.7",
     "openai>=3.13.0",
     "psycopg[binary,pool]>=3.2",
+    "numpy>=2.1",
+    "opencv-python-headless>=4.10",
 ]
 
 [dependency-groups]

@@ -2,11 +2,14 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.schemas.emotion_warp import EmotionProfile
+
 PRESENTATION_FIELDS = {
     "cute_charge",
     "incident_summary",
     "story_intro",
     "different_viewpoint",
+    "emotion_scores",
 }
 
 ComplaintMissingField = Literal[
@@ -88,6 +91,7 @@ class SharedStatement(BaseModel):
 
     incident_description: str = Field(min_length=1, max_length=8000)
     emotions: list[str] = Field(default_factory=list)
+    emotion_scores: EmotionProfile | None = None
     emotion_reason: str = Field(default="", max_length=8000)
     hurt_point: str = Field(default="", max_length=8000)
     desired_outcome: str = Field(min_length=1, max_length=8000)
@@ -112,6 +116,11 @@ class SharedStatement(BaseModel):
         "값 없음"을 빈 문자열 하나로 통일해 프론트가 분기를 두 벌 두지 않게 한다.
         """
         return "" if value is None else value
+
+    @field_validator("emotion_scores", mode="before")
+    @classmethod
+    def _empty_emotion_scores_is_none(cls, value: object) -> object:
+        return None if value == {} else value
 
     def shared(self, value: str) -> bool:
         """공유하지 않기로 한 항목과 빈 값을 함께 걸러낸다."""

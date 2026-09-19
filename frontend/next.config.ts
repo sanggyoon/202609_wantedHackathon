@@ -23,6 +23,18 @@ const nextConfig: NextConfig = {
             destination:
               "http://127.0.0.1:8000/api/complaint/conversation/:path*",
           },
+          {
+            source: "/api/complaint/emotion-profile/resolve",
+            destination: "http://127.0.0.1:8000/api/complaint/emotion-profile/resolve",
+          },
+          {
+            source: "/api/complaint/emotion-profile",
+            destination: "http://127.0.0.1:8000/api/complaint/emotion-profile",
+          },
+          {
+            source: "/api/complaint/emotion-warp",
+            destination: "http://127.0.0.1:8000/api/complaint/emotion-warp",
+          },
         ]
       : [];
   },

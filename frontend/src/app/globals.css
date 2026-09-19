@@ -880,3 +880,29 @@ select:focus {
     padding: 20px;
   }
 }
+.emotion-warp {
+  display: grid;
+  place-items: center;
+  margin: 24px auto;
+  max-width: 420px;
+}
+
+.emotion-warp img,
+.emotion-warp-placeholder {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  object-fit: contain;
+  border-radius: 24px;
+}
+
+.emotion-warp-placeholder {
+  display: grid;
+  place-items: center;
+  background: var(--surface, #f5f3f0);
+  color: var(--muted, #726d68);
+}
+
+.emotion-choice {
+  margin-top: 20px;
+}
