@@ -3,9 +3,10 @@ import Link from "next/link";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { Button, Notice } from "@/components/ui";
 import { MediationPanel, MediationReport } from "@/features/report/MediationReport";
-import { CaseApiError, readCase, type CaseView } from "@/lib/api/cases";
+import { CaseApiError, liveCaseApi, type CaseApi, type CaseView } from "@/lib/api/cases";
 import { ADraftFlow } from "./ADraftFlow";
-import { BResponseFlow } from "./BResponseFlow";
+import { BResponseFlow, type BStep } from "./BResponseFlow";
+import type { Statement } from "@/features/report/types";
 import { caseStage, failureAction } from "./caseStage";
 import { ShareCaseLink } from "./ShareCaseLink";
 import { StartScreen } from "./StartScreen";
@@ -22,7 +23,18 @@ const KEEP_DRAFT = " 작성한 내용은 그대로 있어요.";
 const FORBIDDEN =
   "이 브라우저에서 작성 권한을 확인하지 못했어요. 사건을 만든 브라우저에서 접수해주세요.";
 
-export function LinkedCaseScreen({ token }: { token: string }) {
+// 시안(/wireframe)이 작성 중간 화면을 바로 열어볼 때만 쓴다.
+export type CaseSeed = { aDraft?: Statement; bStep?: BStep; bDraft?: Statement };
+
+export function LinkedCaseScreen({
+  token,
+  api = liveCaseApi,
+  seed,
+}: {
+  token: string;
+  api?: CaseApi;
+  seed?: CaseSeed;
+}) {
   const [view, setView] = useState<CaseView | null>(null);
   const [error, setError] = useState<CaseApiError | null>(null);
   const [loading, setLoading] = useState(true);
@@ -42,7 +54,7 @@ export function LinkedCaseScreen({ token }: { token: string }) {
   );
   const load = useCallback(
     (controller: AbortController) => {
-      return readCase(token, getWriter(token), controller.signal)
+      return api.readCase(token, getWriter(token), controller.signal)
         .then((result) => {
           if (!controller.signal.aborted) setView(result);
         })
@@ -56,7 +68,7 @@ export function LinkedCaseScreen({ token }: { token: string }) {
           if (!controller.signal.aborted) setLoading(false);
         });
     },
-    [token, gone],
+    [token, api, gone],
   );
   const refresh = useCallback(() => {
     // 제출 중에는 화면이 바뀌지 않게 재조회하지 않는다.
@@ -116,7 +128,7 @@ export function LinkedCaseScreen({ token }: { token: string }) {
         else {
           // 저장됐는지 모른다. 서버에 물어보고 단계가 바뀌었으면 그 결과를 따른다.
           try {
-            const latest = await readCase(token, getWriter(token));
+            const latest = await api.readCase(token, getWriter(token));
             setView(latest);
             if (caseStage(latest) !== before)
               setNotice(
@@ -135,7 +147,7 @@ export function LinkedCaseScreen({ token }: { token: string }) {
         setBusy(false);
       }
     },
-    [token, view, gone],
+    [token, api, view, gone],
   );
 
   if (loading && !view) return <p role="status">사건을 확인하고 있어요…</p>;
@@ -219,7 +231,7 @@ export function LinkedCaseScreen({ token }: { token: string }) {
   function body() {
     switch (stage) {
       case "a-draft":
-        return <ADraftFlow token={token} busy={busy} error={submitError} submit={submit} />;
+        return <ADraftFlow token={token} api={api} seed={seed?.aDraft} busy={busy} error={submitError} submit={submit} />;
       case "not-ready":
         return waiting("아직 고소장이 접수되지 않았어요.", "심리 준비 중");
       case "a-sent":
@@ -240,6 +252,8 @@ export function LinkedCaseScreen({ token }: { token: string }) {
         return cards.A ? (
           <BResponseFlow
             token={token}
+            api={api}
+            seed={{ step: seed?.bStep, draft: seed?.bDraft }}
             complaint={cards.A}
             stage={stage}
             busy={busy}

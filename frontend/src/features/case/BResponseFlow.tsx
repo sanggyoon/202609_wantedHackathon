@@ -7,9 +7,7 @@ import { PreviewScreen } from "@/features/report/PreviewScreen";
 import { StatementSummary } from "@/features/report/StatementSummary";
 import type { Statement } from "@/features/report/types";
 import {
-  respond,
-  submitApology,
-  submitStatement,
+  type CaseApi,
   type CaseView,
   type ResponseKind,
 } from "@/lib/api/cases";
@@ -18,11 +16,13 @@ import type { Submit } from "./LinkedCaseScreen";
 import { SummonsArrivedScreen } from "./screens/SummonsArrivedScreen";
 import { StartScreen } from "./StartScreen";
 
-type Step = "intro" | "arrived" | "apology" | "counter-talk" | "counter-preview";
+export type BStep = "intro" | "arrived" | "apology" | "counter-talk" | "counter-preview";
 
 // B: 소환장 → 사과 또는 맞고소 작성 → 제출. 선택은 제출할 때 서버에 확정한다.
 export function BResponseFlow({
   token,
+  api,
+  seed,
   complaint,
   stage,
   busy,
@@ -30,6 +30,8 @@ export function BResponseFlow({
   submit,
 }: {
   token: string;
+  api: CaseApi;
+  seed?: { step?: BStep; draft?: Statement };
   complaint: Statement;
   stage: CaseStage;
   busy: boolean;
@@ -39,20 +41,21 @@ export function BResponseFlow({
   // 서버에 이미 확정된 선택. 이 경우 다른 쪽으로 바꿀 수 없다.
   const locked: ResponseKind | null =
     stage === "b-apology" ? "APOLOGY" : stage === "b-counter" ? "COUNTER" : null;
-  const [step, setStep] = useState<Step>(
-    locked === "APOLOGY" ? "apology" : locked === "COUNTER" ? "counter-talk" : "intro",
+  const [step, setStep] = useState<BStep>(
+    seed?.step ?? (locked === "APOLOGY" ? "apology" : locked === "COUNTER" ? "counter-talk" : "intro"),
   );
-  const [draft, setDraft] = useState<Statement | null>(null);
+  const [draft, setDraft] = useState<Statement | null>(seed?.draft ?? null);
   useEffect(() => {
-    window.scrollTo(0, 0);
+    // 채팅 화면은 대화창이 스스로 하단으로 스크롤한다.
+    if (step !== "counter-talk") window.scrollTo(0, 0);
   }, [step]);
   // 다른 창에서 선택이 확정됐다면 그쪽 흐름으로 보낸다.
   const chosen: ResponseKind | null =
     step === "apology" ? "APOLOGY" : step.startsWith("counter") ? "COUNTER" : null;
-  const current: Step =
+  const current: BStep =
     locked && chosen !== locked ? (locked === "APOLOGY" ? "apology" : "counter-talk") : step;
   const send = (kind: ResponseKind, run: () => Promise<CaseView>) =>
-    void submit(() => (locked ? run() : respond(token, kind, run)));
+    void submit(() => (locked ? run() : api.respond(token, kind, run)));
   const errorNotice = error && <Notice>{error}</Notice>;
   const header: ReactNode = locked ? (
     <Notice>
@@ -98,7 +101,7 @@ export function BResponseFlow({
             submitLabel={busy ? "사과문을 보내고 있어요…" : "사과문 보내기"}
             notice={errorNotice}
             onSubmit={(apology) =>
-              send("APOLOGY", () => submitApology(token, apology))
+              send("APOLOGY", () => api.submitApology(token, apology))
             }
           />
         </>
@@ -129,7 +132,7 @@ export function BResponseFlow({
           }
           notice={errorNotice}
           onConfirm={(card) =>
-            send("COUNTER", () => submitStatement(token, "B", card, null))
+            send("COUNTER", () => api.submitStatement(token, "B", card, null))
           }
         />
       ) : null;

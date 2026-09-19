@@ -266,6 +266,15 @@ body.chat-open .screen > .notice {
 body.chat-open .screen {
   padding-bottom: 0;
 }
+/* 개발용 패널: 푸터 아래, 본문과 같은 폭. 채팅 화면에서는 입력창이 밀리지 않게 숨긴다. */
+.dev-dock {
+  max-width: 768px;
+  margin: 0 auto;
+  padding: 0 16px 32px;
+}
+body.chat-open .dev-dock {
+  display: none;
+}
 .review {
   margin-top: 16px;
   border: 1px dashed #aaaab4;

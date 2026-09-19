@@ -33,6 +33,7 @@ export function ShareCaseLink({ token }: { token: string }) {
   }
   return (
     <>
+      <p className="placeholder">{link()}</p>
       <Notice>링크를 가진 사람은 사건을 열람할 수 있어요. 상대에게만 전달해주세요.</Notice>
       <div className="actions">
         <Button onClick={() => void copy()}>소환장 링크 복사</Button>
@@ -41,7 +42,7 @@ export function ShareCaseLink({ token }: { token: string }) {
         </Button>
       </div>
       {message && <p role="status">{message}</p>}
-      {url && (
+      {url && message.startsWith("아래") && (
         <label className="field">
           공유 링크
           <input readOnly value={url} onFocus={(e) => e.currentTarget.select()} />
