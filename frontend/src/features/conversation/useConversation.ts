@@ -39,7 +39,9 @@ export function useConversation(
     const editingIndex = editing;
     const controller = new AbortController();
     active.current = controller;
-    const timeout = setTimeout(() => controller.abort(), 65000);
+    // 서버(Nginx proxy_read_timeout 60초)가 먼저 끊으면 원인을 알 수 없는 오류가 된다.
+    // 그보다 앞서 끊어 재시도 안내를 보여준다.
+    const timeout = setTimeout(() => controller.abort(), 55000);
     setPendingTurn({ text });
     setInput("");
     setPending(true);

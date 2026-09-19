@@ -337,7 +337,7 @@ alter table apologies       add column admitted_point    text;
 `writer_token_hash`는 A의 쓰기 권한 검증에 쓴다(`docs/API_Design.md` §6.1).
 
 나머지 넷은 **프론트에 이미 구현된 기능이 DB에 담길 곳이 없어서** 추가한다. 공유 항목
-선택 화면(`ShareSelectScreen.tsx`)이 사용자에게 "기대했던 행동"·"추측"을 공유할지 고르게
+선택 화면(`ShareSelectScreen.tsx`, 2026-09-18 제거)이 사용자에게 "기대했던 행동"·"추측"을 공유할지 고르게
 하고, 사과문 화면은 "인정한 점"을 받는다. 카드 형태를 DB 기준으로 통일하기로 하면서
 (`docs/API_Design.md` §8-1) 이 셋을 DB가 흡수한다.
 

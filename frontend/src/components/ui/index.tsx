@@ -29,8 +29,19 @@ export function Heading({
     </div>
   );
 }
-export function Notice({ children }: { children: ReactNode }) {
-  return <p className="notice">{children}</p>;
+// role을 주면 채팅 화면에서도 숨기지 않는다 (globals.css의 body.chat-open 규칙).
+export function Notice({
+  children,
+  role,
+}: {
+  children: ReactNode;
+  role?: "alert" | "status";
+}) {
+  return (
+    <p className="notice" role={role}>
+      {children}
+    </p>
+  );
 }
 export function Toast({ message }: { message: string | null }) {
   if (!message) return null;
