@@ -908,6 +908,10 @@ select:focus {
   border-radius: 24px;
 }
 
+.hero-emotion-gray img {
+  filter: grayscale(1);
+}
+
 .emotion-warp-placeholder {
   display: grid;
   place-items: center;

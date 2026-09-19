@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui";
-import type { EntryMode } from "@/features/report/types";
+import { EmotionWarpImage } from "@/features/report/EmotionWarpImage";
+import type { EmotionProfile, EntryMode } from "@/features/report/types";
 
 const copy: Record<
   EntryMode,
@@ -57,8 +58,10 @@ export function StartScreen({
     </>
   ),
   busy = false,
+  emotion,
   onStart,
 }: {
+  emotion?: EmotionProfile | null;
   entryMode?: EntryMode;
   resultTab?: ResultEnding;
   notice?: ReactNode;
@@ -92,6 +95,10 @@ export function StartScreen({
               </motion.div>
             </div>
           )
+        ) : emotion ? (
+          <div className="hero-emotion-gray">
+            <EmotionWarpImage profile={emotion} />
+          </div>
         ) : (
           <div className="paper doc font-point" aria-hidden="true">
             고소장

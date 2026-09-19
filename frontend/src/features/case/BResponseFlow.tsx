@@ -73,6 +73,7 @@ export function BResponseFlow({
       return (
         <StartScreen
           entryMode="invited"
+          emotion={complaint.emotion_scores}
           notice={
             <>
               판결문(결과물)은 <strong>7일 후 파기</strong>돼요.
