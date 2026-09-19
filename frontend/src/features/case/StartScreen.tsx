@@ -61,8 +61,10 @@ export function StartScreen({
   emotion,
   emotionA,
   emotionB,
+  placeholderImages = false,
   onStart,
 }: {
+  placeholderImages?: boolean;
   emotion?: EmotionProfile | null;
   emotionA?: EmotionProfile | null;
   emotionB?: EmotionProfile | null;
@@ -107,16 +109,20 @@ export function StartScreen({
                 <div className="doc-half plaintiff">
                   {emotionA ? (
                     <EmotionWarpImage profile={emotionA} />
-                  ) : (
-                    // 임시 이미지: 감정 데이터가 없을 때 감정 이미지 8종 중 하나를 쓴다.
+                  ) : placeholderImages ? (
+                    // 와이어프레임 전용 임시 이미지
                     <img src="/images/anger.png" alt="" className="paper-image" />
+                  ) : (
+                    "원고"
                   )}
                 </div>
                 <div className="doc-half defendant">
                   {emotionB ? (
                     <EmotionWarpImage profile={emotionB} />
-                  ) : (
+                  ) : placeholderImages ? (
                     <img src="/images/sadness.png" alt="" className="paper-image" />
+                  ) : (
+                    "피고"
                   )}
                 </div>
               </motion.div>
