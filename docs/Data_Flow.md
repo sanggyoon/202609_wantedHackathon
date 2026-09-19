@@ -2,7 +2,7 @@
 
 > 상위 문서: `docs/PRD.md` (커플 감정 전달 서비스 기획안)
 >
-> 문서 버전: 0.4 · 최종 수정: 2026-09-16 · 상태: Accepted
+> 문서 버전: 0.5 · 최종 수정: 2026-09-19 · 상태: Accepted
 >
 > 중점 영역: ① AI 대화 원문 비저장 흐름 · ② 단일 링크 상태 전이별 데이터 흐름 · ③ 7일 만료·삭제 흐름
 >
@@ -88,6 +88,14 @@ DB 제약이 막는다 (§7.2).
 `statement_cards`에 `hurt_point`·`expected_behavior`·`assumption`이, `apologies`에
 `admitted_point`가 2026-09-15에 추가됐다. 프론트의 공유 항목 선택 기능이 이미 다루던
 항목인데 담길 곳이 없어 DB가 흡수한 것이다 (`docs/API_Design.md` §8-1).
+
+그 뒤 `statement_cards`에 두 컬럼이 더 붙었다. 둘 다 카드와 함께 한 트랜잭션에서 저장되며
+대화 원문은 담지 않는다.
+
+| 컬럼 | 추가 | 내용 |
+| --- | --- | --- |
+| `story_intro` | 2026-09-18 | 수신자에게 먼저 보여주는 1인칭 도입문 (`Story_Intro_Design.md`) |
+| `emotion_scores` | 2026-09-19 | 감정 점수·대표 이미지·6축 왜곡값 스냅샷 (`Emotion_Image_Warp_PRD.md`) |
 
 ---
 
@@ -511,7 +519,9 @@ v0.1의 미결 8건 중 5건이 확정되었다. 남은 항목은 다음과 같�
 | 사건 SQL — 여기에만 둔다 | `backend/app/repositories/cases.py` |
 | **lazy 만료 검사** | `backend/app/api/cases.py`의 `_expired()` — 조회·쓰기 양쪽에서 |
 | 상태 전이 (조건부 UPDATE) | `backend/app/repositories/cases.py` |
-| T1 — 원문 임시 보관과 폐기 | `backend/app/` — 실제 구현은 **클라이언트가 구조화 상태를 왕복**시키는 방식이라 서버 메모리에도 남지 않는다 (`docs/API_Design.md` §3) |
+| T1 — 원문 임시 보관과 폐기 | `backend/app/` — 대화는 **클라이언트가 구조화 상태를 왕복**시키는 방식이라 서버에 남지 않는다. 단 문서 생성 직전 감정 채점에서 사용자 발화 전체가 한 번 더 전송된다 (`docs/API_Design.md` §3) |
+| 카드 죄명·한 줄 요약·도입문 생성 | `backend/app/services/card_summary.py`, `app/api/card_summary.py` |
+| 감정 점수 산출·왜곡 이미지 렌더 | `backend/app/services/{emotion_profile,emotion_warp,warp_hexagon}.py`, `app/assets/emotions/` |
 | HTTP 계약 (경로·요청·응답·오류) | `docs/API_Design.md` |
 | 로컬 역할 표식(A/B 판정) | `frontend/src/` 브라우저 저장소 |
 
@@ -521,6 +531,7 @@ v0.1의 미결 8건 중 5건이 확정되었다. 남은 항목은 다음과 같�
 
 | 버전 | 날짜 | 변경 |
 | --- | --- | --- |
+| 0.5 | 2026-09-19 | §3에 `story_intro`·`emotion_scores` 추가. §11 구현 매핑에 카드 요약·감정 채점 모듈 추가. 감정 채점의 원문 전송 예외 명시 |
 | 0.4 | 2026-09-16 | §3에 `writer_token_hash`와 09-15 추가 컬럼 4개 반영, 토큰 두 종류 설명 추가. §9에 lazy 검사 구현 완료·`pg_cron` 실행 이력 미확인 표시. §11 구현 매핑을 실제 모듈로 갱신 |
 | 0.3 | 2026-09-14 | §7.1 외부 AI 제공자 경계 해소(OpenAI `store=False`). §10 미결 4건 → 3건. §11에 API 설계 문서 및 T1 실제 구현 방식 반영 |
 | 0.2 | 2026-09-12 | §6 D1 생성 시점 모순 해소(P1 발급 시 생성). §7.1 서버 무저장 확정. §7.2 제출 1회·즉시 잠금·폐기 기능 MVP 제외 확정. §7.3 만료 기준(최종 답변 +7일, 생성 시 초기화)과 pg_cron 확정. §8.3 미답변 만료 경로 추가. §9 보장 주체 열 추가. §11 구현 매핑 추가. 미결 8건 → 4건 |

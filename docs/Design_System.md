@@ -31,7 +31,13 @@ background: linear-gradient(-7deg, #F0EFEE 0%, #FAFAFA 26%, #F0EFEE 84%);
 background: linear-gradient(-7deg, #FAFAFA 26%, #F0EFEE 84%);
 ```
 
-### 시멘틱 컬러 (Semantic)
+> **2026-09-19 구현 대조.** `globals.css`에 실제로 선언된 CSS 변수는
+> `--primary`, `--text`, `--muted`, `--border`, `--radius` 다섯 개다. 아래 시멘틱 컬러와
+> Tertiary·Disabled·Placeholder 계층은 **아직 도입하지 않았다.** 오류 표시는 색 대신
+> `role="alert"`와 안내 문구로 처리한다. `#D8D8DA`는 문서상 Placeholder지만 코드에서는
+> 테두리(`--border`)로 쓰고 있다. 헤더 브랜드 글자 7색(`AppShell.tsx`)은 아직 문서에 없다.
+
+### 시멘틱 컬러 (Semantic) — 미도입
 
 | 이름 | Hex | 용도 |
 |------|-----|------|
@@ -103,37 +109,34 @@ font-family: 'BMkkubulim', sans-serif;
 | 서체 | 값 | 비고 |
 |------|----|------|
 | Pretendard | `0` | 기본값 유지 (letter-spacing 별도 지정 불필요) |
-| BMkkubulim | `0.02em` | 2%, 포인트 서체 가독성 확보 |
+| BMkkubulim | `0.025em` | 2.5%, 포인트 서체 가독성 확보 (`globals.css` 실제 값) |
 
 ### 타입 스케일
 
+실제 `globals.css` 기준이다.
+
 | 스타일 | 크기 | 용도 예시 |
 |--------|------|-----------|
-| H1 | 34px (420px 이하) / 36px (모바일) / 40px (태블릿 이상) | 메인 헤딩 |
-| H2 | 36px | 섹션 제목 |
-| H3 | 24px | 서브 제목 |
-| H4 | 20px | 카드 제목, 강조 본문 |
-| H5 | 16px | 본문, 레이블 |
-| H6 | 12px | 캡션, 메타 정보 |
+| `h1` | 32px (기본) / 36px (768px 이상) | 화면 제목 |
+| `.hero h1` | 28px / 34px (420px 이하) / 40px (768px 이상) | 시작 화면 헤드라인 |
+| `h2` | 22px | 섹션 제목, 카드 제목 |
+| `h3` | 14px (muted) | 카드 안 항목 레이블 |
+| `small`, `.notice` | 12px | 캡션, 안내 |
+
+H4~H6에 해당하는 스타일은 쓰지 않는다.
 
 ---
 
 ## 3. 아이콘 (Iconography)
 
-**Lucide Icons** 사용
+**아직 아이콘 라이브러리를 도입하지 않았다 (2026-09-19).** 현재는 텍스트 글리프(`↗`, `↑`, `↻`,
+체크 `✓`)와 PNG(사과 아이콘, 감정 이미지)를 쓴다.
+
+도입한다면 **Lucide Icons**가 후보다.
 
 - 공식 사이트: [lucide.dev](https://lucide.dev)
-- NPM: `npm install lucide-react` (React) / `npm install lucide` (Vanilla JS)
-- 기본 스트로크 두께: 2px
-- 기준 사이즈: 16px / 20px / 24px
-
-```bash
-# React
-npm install lucide-react
-
-# Vue
-npm install lucide-vue-next
-```
+- NPM: `npm install lucide-react`
+- 기본 스트로크 두께: 2px · 기준 사이즈: 16px / 20px / 24px
 
 ---
 
@@ -210,11 +213,12 @@ npm install lucide-vue-next
 | 레이어 | 값 | 예시 |
 |--------|----|------|
 | Base | 0 | 일반 콘텐츠, 메시지 목록 |
-| Sticky | 100 | 헤더, 하단 입력창 |
-| Dropdown | 200 | 툴팁, 컨텍스트 메뉴 |
-| Overlay | 300 | 모달 딤 배경 |
-| Modal | 400 | 바텀시트, 팝업 |
-| Toast | 500 | 토스트, 알림 메시지 |
+| 고정 CTA | 40 | 하단 고정 버튼 영역 (`.cta-float`) |
+| Sticky | 100 | 헤더, 하단 입력창 (`.composer`) |
+| Toast | 200 | 토스트, 알림 메시지 (`.toast`) |
+
+> 위 값이 현재 `globals.css`에 쓰인 전부다. Overlay·Modal 레이어는 아직 쓰는 곳이 없다.
+> 토스트가 문서 초안의 500이 아니라 200이라는 점에 주의한다 — 모달을 추가하면 함께 정리해야 한다.
 
 ---
 
@@ -239,6 +243,7 @@ npm install lucide-vue-next
 ## 9. 터치 타깃 (Touch Target)
 
 - 최소 크기: **48×48px** (Google Material Design / Apple HIG 기준)
+  - 예외: 대화 화면 전송 버튼이 40×40이다. 터치 영역을 넓히거나 크기를 키우는 정리가 필요하다.
 - 아이콘 등 시각 요소가 작더라도 `padding`으로 터치 영역을 48px 이상 확보한다.
 
 ```css
@@ -262,14 +267,14 @@ npm install lucide-vue-next
 |------|------|
 | Skeleton UI | 콘텐츠 로딩 전 회색 플레이스홀더 블록 |
 | Shimmer | 스켈레톤에 빛이 흐르는 애니메이션 효과 |
-| Streaming | AI가 토큰 단위로 텍스트를 순차 출력하는 방식 |
+| Streaming | AI가 토큰 단위로 텍스트를 순차 출력하는 방식. **v1은 쓰지 않는다**(비스트리밍, `API_Design.md` §10) |
 | Typing Indicator | `···` 버블로 응답 대기 중임을 표시 |
 
 ### AI 채팅 응답 대기 시
 
 1. **응답 대기 중** — Typing Indicator (`···` 버블) 또는 Shimmer 블록 표시
-2. **응답 시작** — Streaming 방식으로 텍스트 순차 출력
-3. **에러 발생** — Semantic-Red 계열 인라인 메시지로 처리
+2. **응답 도착** — 한 번에 받아 표시한다. Streaming은 도입하지 않았다
+3. **에러 발생** — 현재는 색 없이 `role="alert"` 인라인 문구로 처리한다. 시멘틱 컬러는 미도입
 
 ### 일반 콘텐츠 로딩 시
 

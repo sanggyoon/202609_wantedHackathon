@@ -1,8 +1,8 @@
 # 감정 대표 이미지 선택 및 얼굴 왜곡(Warp) PRD
 
-> 문서 버전: 1.1  
-> 작성일: 2026-09-19  
-> 상태: AI 채점 방식 확정 / 구현 진행  
+> 문서 버전: 1.2  
+> 작성일: 2026-09-19 (최종 수정: 2026-09-19, 구현 대조 반영)  
+> 상태: v1 구현 완료 — 이 문서는 `backend/app/schemas/emotion_warp.py`와 `services/emotion_*.py`를 기준으로 맞춤  
 > 대상: 신청인(A) 고소장, 상대방(B) 맞고소장, 사과/맞고소 최종 결과 화면  
 > 프로토타입: `sseung63-eng/img-wrap-test` commit `06a7267`
 
@@ -152,10 +152,11 @@ Warp에는 AI 점수를 `score / 100`으로 정규화해 사용한다. 점수 �
 
 ### 6.5 대표 이미지 선택
 
-1. 이미지 그룹별 count는 소속 라벨 count의 합이다.
-2. count가 가장 큰 그룹을 우선한다.
-3. 동률이면 그룹 점수 `clip(소속 라벨 score 합, 0, 1)`가 큰 그룹을 우선한다.
-4. count와 그룹 점수가 모두 같으면 `needs_clarification`을 반환한다.
+1. 비교 단위는 이미지 그룹이 아니라 **라벨**이다(`services/emotion_profile.py`).
+2. `mention_count`가 가장 큰 라벨을 우선한다.
+3. 동률이면 그 중 `score`가 큰 라벨을 우선한다.
+4. 두 값이 모두 같은 라벨이 둘 이상이면 `needs_clarification`을 반환한다. 후보가 같은
+   이미지를 쓰더라도 지금은 질문한다 — 그룹 합산은 도입하지 않았다(§18).
 5. 사용자는 후보 중 지금 가장 큰 감정 하나를 고른다.
 6. 선택 결과는 시각 표현만 확정하며 기존 `emotions` 배열을 변경하지 않는다.
 
@@ -186,46 +187,22 @@ axis[i] = clip(sum(label_scores mapped to axis[i]), 0, 1)
 
 ### 7.1 이웃 번짐
 
-육각형 순서에서 이전·다음 축의 값을 한 번만 더한다.
+번짐은 렌더러 한 곳에서만 적용한다. `warp_hexagon._local_strength()`가 `neighbor_bleed`
+(기본 0.15)로 이전·다음 축을 섞으며, 애플리케이션은 축 합산만 하고 번짐을 계산하지 않는다.
+
+### 7.2 바닥값
 
 ```text
-smoothed[i] = clip(
-  axis[i] + BLEED * (axis[prev] + axis[next]),
-  0,
-  1
-)
-```
-
-초기값:
-
-```text
-BLEED = 0.15
-```
-
-프로토타입의 `_local_strength()`도 `neighbor_bleed`를 적용하므로 이중 번짐을 막기 위해
-서비스 호출 시에는 반드시 `warp_image_hexagon(..., neighbor_bleed=0)`을 사용한다.
-
-### 7.2 바닥값과 전체 가중치
-
-```text
-final[i] = clip(
-  BASE + (1 - BASE) * smoothed[i] * GLOBAL_WEIGHT,
-  BASE,
-  1
-)
-```
-
-초기값:
-
-```text
+axis[i] = round(clip(sum(label_score/100 mapped to axis[i]), BASE, 1), 4)
 BASE = 0.05
-GLOBAL_WEIGHT = 1.0
-MAX_K = 2.5
-RADIAL_SHARPNESS = 2.0
 ```
 
-`BASE`는 여섯 방향에 최소 볼록 왜곡을 유지한다. 폴백 이미지에는 BASE를 포함한 Warp를
+`BASE`는 여섯 방향에 최소 볼록 왜곡을 유지한다. 폴백 이미지(`asset1.png`)에는 Warp 자체를
 적용하지 않는다.
+
+렌더러 기본값은 `max_k = 2.5`, `neighbor_bleed = 0.15`, `radial_sharpness = 2.0`이며
+스냅샷의 `params`에 함께 저장된다. `GLOBAL_WEIGHT`·`SCORE_EXPONENT`와 `(1 - BASE)` 스케일링은
+v1에 도입하지 않았다(§18).
 
 ## 8. 스냅샷 데이터
 
@@ -240,43 +217,42 @@ alter table statement_cards
 
 ```json
 {
-  "version": "warp-v1",
-  "labels": {
-    "화남": {"count": 2, "emphasis_count": 1, "score": 0.470},
-    "짜증": {"count": 1, "emphasis_count": 0, "score": 0.088}
-  },
-  "representative": {
-    "group": "anger",
-    "label": "화남",
-    "image": "anger.png",
-    "resolved_by": "frequency"
-  },
+  "version": "ai-warp-v1",
+  "representative_emotion": "화남",
+  "image": "anger.png",
+  "scores": [
+    {"label": "화남", "mention_count": 2, "score": 47},
+    {"label": "짜증", "mention_count": 1, "score": 9}
+  ],
   "axes": {
-    "화남": 0.72,
-    "질투": 0.18,
+    "화남": 0.56,
+    "질투": 0.05,
     "슬픔": 0.05,
-    "포기": 0.12,
+    "포기": 0.05,
     "황당": 0.05,
-    "서운함": 0.09
+    "서운함": 0.05
   },
+  "resolved_by": "ai",
   "params": {
-    "score_exponent": 1.75,
-    "bleed": 0.15,
-    "base": 0.05,
-    "global_weight": 1.0,
     "max_k": 2.5,
-    "radial_sharpness": 2.0
-  },
-  "asset_version": "emotion-assets-e2bb001",
-  "warp_source_commit": "06a7267"
+    "neighbor_bleed": 0.15,
+    "radial_sharpness": 2.0,
+    "base": 0.05
+  }
 }
 ```
 
+형태의 권위는 `backend/app/schemas/emotion_warp.py`의 `EmotionProfile`이다. `asset_version`·
+`warp_source_commit`·`emphasis_count`·`score_exponent`·`global_weight`는 v1에 없다(§18).
+
+
 규칙:
 
-- 13개 라벨을 모두 기록하며 없는 값은 count·score 0으로 저장한다.
+- 근거가 없는 라벨(`mention_count`·`score`가 0)은 저장하지 않는다. 점수는 0~100 정수다.
 - 사용자가 동률 질문으로 정했다면 `resolved_by`는 `user`다.
-- 폴백은 `group: "fallback"`, `image: "asset1.png"`, 빈 axes를 저장한다.
+- 폴백은 `image: "asset1.png"`, `resolved_by: "fallback"`이며 `representative_emotion`은 `null`이다.
+  `axes`는 폴백에서도 6축을 모두 채운다(최솟값 `base` 0.05). `asset1.png`은 렌더 단계에서 Warp를
+  건너뛴다(`services/emotion_warp.py`).
 - Pydantic 모델로 허용 키, 숫자 범위, 버전을 검증한다.
 - `emotion_scores`는 표시용 파생 데이터이므로 `PRESENTATION_FIELDS`에 추가해 중재 AI,
   B 진술 수집 AI, 카드 요약 AI 입력에서 제외한다.
@@ -288,7 +264,8 @@ alter table statement_cards
 
 - 이미지 파일은 덮어쓰지 않고 변경 시 새 `asset_version`을 만든다.
 - Warp 계산 변경 시 기존 `warp-v1`을 수정하지 않고 `warp-v2`를 추가한다.
-- 스냅샷의 `version`, `asset_version`, `params`로 렌더러를 선택한다.
+- v1은 단일 렌더러다. 스냅샷의 `params`만 읽고, 알 수 없는 `version`은 스키마 단계에서 422로 거부한다.
+  버전 분기와 `asset_version`은 `warp-v2` 도입 시점의 과제다.
 - 조회 시 raw score를 다시 계산하지 않고 저장된 `axes`와 `params`만 읽는다.
 - 문서 유효기간 7일 동안 해당 버전 렌더러와 자산을 유지한다.
 
@@ -344,7 +321,17 @@ Cache-Control: no-store
 - 문서 생성 시 OpenAI 구조화 채점을 한 번 호출한다.
 - 응답은 캐시하지 않는다.
 
-### 10.2 저장 전 미리보기 이미지
+### 10.2 동률 해소
+
+```http
+POST /api/complaint/emotion-profile/resolve
+Content-Type: application/json
+```
+
+프로파일과 사용자가 고른 라벨을 받아 대표 감정·이미지를 확정한 프로파일을 돌려준다
+(`resolved_by: "user"`). 후보 밖 라벨은 422다.
+
+### 10.3 저장 전 미리보기 이미지
 
 ```http
 POST /api/complaint/emotion-warp
@@ -353,7 +340,7 @@ Content-Type: application/json
 
 검증된 profile을 받아 `image/png`를 반환한다. 검토 화면에서 사용한다.
 
-### 10.3 저장된 사건 이미지
+### 10.4 저장된 사건 이미지
 
 사건 조회 API가 만료 검사 후 카드의 `emotion_scores`를 프론트에 전달한다. 프론트는 저장 전과
 같은 `POST /api/complaint/emotion-warp`에 이 스냅샷을 보내 PNG를 재생성한다. 별도 이미지
@@ -365,10 +352,10 @@ Content-Type: application/json
 | --- | --- |
 | `backend/app/services/emotion_profile.py` | 13개 라벨 탐색, 빈도·강도, 대표 이미지, 6축 계산 |
 | `backend/app/services/warp_hexagon.py` | 프로토타입 commit `06a7267`의 서비스용 함수 이식 |
-| `backend/app/services/emotion_warp.py` | 자산 로딩, 버전 분기, PNG 인코딩 |
+| `backend/app/services/emotion_warp.py` | 자산 로딩, Warp 호출, PNG 인코딩 (버전 분기 없음) |
 | `backend/app/schemas/emotion_warp.py` | 요청·프로파일·동률 응답 검증 모델 |
-| `backend/app/api/emotion_warp.py` | 프로파일 POST, 미리보기 POST |
-| `backend/app/api/cases.py` | 저장된 A/B Warp 이미지 GET |
+| `backend/app/api/emotion_warp.py` | 프로파일 POST, 동률 해소 POST, 이미지 POST |
+| `backend/app/api/cases.py` | 사건 조회 응답에 `emotion_scores` 포함 (이미지 GET 없음) |
 | `backend/app/schemas/complaint.py` | `SharedStatement.emotion_scores` 추가 및 AI 입력 제외 |
 | `backend/app/repositories/cases.py` | JSONB 조회·저장 |
 | `backend/app/main.py` | 라우터 등록 |
@@ -377,8 +364,8 @@ Content-Type: application/json
 | `supabase/migrations/*_add_emotion_scores.sql` | JSONB 컬럼과 object 타입 CHECK 추가 |
 
 백엔드 Docker build context가 `./backend`이므로 `frontend/public/images`를 런타임에 직접
-읽을 수 없다. 백엔드 자산 폴더에 버전 고정 복사본을 두고 체크섬 테스트로 프론트 원본과
-불일치를 탐지한다.
+읽을 수 없다. 백엔드 자산 폴더에 버전 고정 복사본을 둔다. 지금은 수동 동기화이며, 프론트 원본과의
+체크섬 비교 테스트는 아직 없다(과제).
 
 프로토타입 저장소에는 명시적인 라이선스 파일이 없으므로 서비스 코드로 이식하기 전에
 저장소 소유자 또는 팀 내부 사용 권한을 확인하고 원본 commit을 문서에 남긴다.
@@ -392,28 +379,31 @@ Content-Type: application/json
 | `frontend/src/features/conversation/LiveConversationScreen.tsx` | 초안 전 프로파일 생성 및 동률 질문 |
 | `frontend/src/features/report/types.ts` | `emotion_scores` 타입 추가 |
 | `frontend/src/features/report/EmotionWarpImage.tsx` | Blob URL 수명·로딩·폴백 처리 |
-| `frontend/src/features/report/PreviewScreen.tsx` | 저장 전 Warp 미리보기 |
-| `frontend/src/features/report/StatementSummary.tsx` | 받은 고소장 이미지 표시 |
-| `frontend/src/features/report/StatementCard.tsx` | 독립 카드 이미지 표시 옵션 |
-| `frontend/src/features/case/screens/CounterclaimResult.tsx` | A/B 이미지 나란히 표시 |
+| `frontend/src/features/report/PreviewScreen.tsx` | 저장 전 미리보기 (`StatementCard` 경유) |
+| `frontend/src/features/report/StatementSummary.tsx` | 펼친 고소장 카드 안에서만 표시 (도입문 위 표시는 미구현) |
+| `frontend/src/features/report/StatementCard.tsx` | 카드 이미지 표시 (표시 여부 옵션은 없음) |
+| `frontend/src/features/case/screens/CounterclaimResult.tsx` | A/B 카드를 통해 나란히 표시 |
 | `frontend/src/features/case/screens/ApologyResult.tsx` | A 이미지와 사과 결과 표시 |
 | `frontend/src/app/globals.css` | 420×420 비율, 모바일 크기, 로딩 영역 |
 
-화면에서 같은 카드 이미지가 두 번 중첩되지 않도록 `StatementCard`에 표시 여부 옵션을 둔다.
+표시 여부 옵션은 아직 없고 `StatementCard`가 항상 이미지를 그린다. 중복은 호출 측에서
+카드와 이미지를 겹쳐 쓰지 않는 방식으로 피한다(`ApologyResult`는 이미지를 직접 렌더).
 Blob URL은 교체·언마운트 시 반드시 `URL.revokeObjectURL()`로 해제한다.
 
 ## 13. 실패 처리
 
 - 프로파일 생성 실패: `asset1.png` 폴백으로 초안 작성을 계속한다.
-- 동률 질문 API 실패: 후보 중 기존 `emotions` 배열에서 먼저 나온 그룹을 임시 선택한다.
+- 동률 질문 API 실패: 재시도를 안내한다. 선택을 마쳐야 초안으로 넘어갈 수 있으며 임시 선택
+  폴백은 아직 없다(과제).
 - Warp 생성 실패: 선택된 원본 감정 이미지를 그대로 표시한다.
 - 저장된 사건 이미지 실패: 이미지 영역만 폴백하며 문서 내용은 계속 보여준다.
-- 알 수 없는 버전: 폴백 이미지를 반환하고 서버에 버전 오류만 기록한다.
+- 알 수 없는 버전: 스키마 검증에서 422로 거부한다(폴백 반환 아님).
 - 이미지 오류에 대화 원문이나 토큰을 로그로 남기지 않는다.
 
 ## 14. 성능 및 운영
 
-- 입력 자산과 출력은 420×420 PNG를 기준으로 한다.
+- 감정 이미지 8장과 그 출력은 420×420 PNG다. 폴백 `asset1.png`는 373×458이라 화면에서
+  `object-fit: contain`으로 맞춘다.
 - 프로파일 계산 목표: 로컬 p95 50ms 이하.
 - Warp 생성 목표: 백엔드 단일 요청 p95 500ms 이하를 초기 기준으로 측정한다.
 - 한 사건 화면에서 같은 side 이미지를 중복 요청하지 않는다.
@@ -434,6 +424,9 @@ Blob URL은 교체·언마운트 시 반드시 `URL.revokeObjectURL()`로 해제
 - 폴백은 Warp를 적용하지 않는다.
 
 ### 15.2 Warp 단위 테스트
+
+현재 커버된 것은 `tests/test_emotion_profile.py`의 "PNG가 반환된다" 하나뿐이고,
+아래 항목은 미작성 과제다.
 
 - 420×420 BGRA 입력의 크기와 알파 채널이 유지된다.
 - 동일 입력과 스냅샷은 동일한 출력 크기·허용 오차 내 픽셀 결과를 낸다.
@@ -488,7 +481,8 @@ Blob URL은 교체·언마운트 시 반드시 `URL.revokeObjectURL()`로 해제
 - 6축 이름은 프로토타입의 `화남/질투/슬픔/포기/황당/서운함`을 v1에서 유지한다.
   특히 질투·포기 축은 입력 라벨과 의미 차이가 있으므로 제품 문구에는 노출하지 않는다.
 - 13개 라벨→6축 중복 매핑표는 초기 제안이며 실제 이미지 튜닝 결과로 확정한다.
-- `SCORE_EXPONENT=1.75`, `BLEED=0.15`, `BASE=0.05`, `GLOBAL_WEIGHT=1.0`을
-  첫 시각 비교의 기준값으로 사용한다.
+- v1 기준값은 `BASE=0.05`, `neighbor_bleed=0.15`, `max_k=2.5`, `radial_sharpness=2.0`이다.
+  `SCORE_EXPONENT`·`GLOBAL_WEIGHT`는 도입하지 않았다.
+- 대표 이미지 선택은 라벨 단위 비교다. 이미지 그룹 합산은 도입하지 않았다(§6.5).
 - `asset1.png`을 감정 없음/미인식 폴백으로 쓰되 Warp하지 않는다.
 - 프로토타입 코드의 서비스 사용 권한을 확인한다.

@@ -63,7 +63,8 @@ DFD §6의 "사건 삭제 시 연쇄 삭제" 요구를 만족한다.
 `statement_cards`는 A·B 두 장이므로 `UNIQUE(case_id, side)`로 같은 효과를 낸다.
 
 배열 필드는 Postgres `text[]`를 쓴다. PRD §11의 `string[]`·`text[]` 표기와 1:1로
-대응하고, JSONB보다 제약이 명확하다.
+대응하고, JSONB보다 제약이 명확하다. 예외는 `emotion_scores` 하나다 — 버전 스냅샷이라
+JSONB로 두고 `jsonb_typeof = 'object'` CHECK로 형태만 강제한다(2026-09-19).
 
 ### PRD §11에서 추가한 컬럼
 
@@ -138,7 +139,7 @@ create table statement_cards (
   side                 statement_side not null,
   cute_charge          text           not null,
   incident_summary     text           not null,
-  story_intro          text           not null default '',
+  story_intro          text           not null default '',   -- 2026-09-18 추가
   incident_description text           not null,
   emotions             text[]         not null default '{}',
   emotion_reason       text           not null,
@@ -148,12 +149,18 @@ create table statement_cards (
   hurt_point           text,                         -- 서운했던 지점
   expected_behavior    text,                         -- 그때 기대했던 행동
   assumption           text,                         -- 사실로 확인되지 않은 추측
+  -- 2026-09-19 추가. 감정 점수·대표 이미지·6축 왜곡값 스냅샷 (Emotion_Image_Warp_PRD.md)
+  emotion_scores       jsonb          not null default '{}'::jsonb
+    constraint statement_cards_emotion_scores_object check (jsonb_typeof(emotion_scores) = 'object'),
   created_at           timestamptz    not null default now(),
   unique (case_id, side)
 );
 ```
 
-nullable인 것은 `different_viewpoint`와 나중에 추가된 셋이다. 넷 다 조회 시 `None`이
+`story_intro`와 `emotion_scores`는 나중에 추가된 컬럼이라 기본값이 있다. `emotion_scores`의
+빈 객체 `{}`는 API 계층이 "없음"(`None`)으로 읽는다.
+
+nullable인 것은 `different_viewpoint`와 09-15에 추가된 셋이다. 넷 다 조회 시 `None`이
 올 수 있고, **API 계층이 빈 문자열로 바꿔 내보낸다**(`SharedStatement`의 검증기).
 `different_viewpoint`만은 `null`을 유지한다 — "아직 생성되지 않음"과 "빈 값"이 다르다.
 
@@ -314,6 +321,8 @@ DFD §7.3의 "접근 시점 검사 + 배치 삭제 병행" 권장안이다.
 | 2 | `20260912113000_case_schema.sql` | §4 열거형·테이블·인덱스, §5 RLS | 적용됨 |
 | 3 | `20260912113100_expiry_purge.sql` | §6 pg_cron·함수·스케줄 | 적용됨 |
 | 4 | `20260915101500_align_api_schema.sql` | API 연결에 필요한 컬럼 5개 (아래) | 적용됨 |
+| 5 | `20260918120000_add_story_intro.sql` | `statement_cards.story_intro` (수신자용 도입문) | 적용됨 |
+| 6 | `20260919180000_add_emotion_scores.sql` | `statement_cards.emotion_scores` JSONB + object CHECK | 적용됨 |
 
 ### 4번 — API 연결에 필요한 컬럼 (2026-09-14 결정, 09-15 적용)
 
@@ -378,6 +387,8 @@ SQL 에디터로 프로덕션 스키마를 직접 고치지 않는다. 마이그
 | --- | --- |
 | 2026-09-12 | `init.sql`·`case_schema`·`expiry_purge` 3개를 `supabase db push`로 최초 적용. 검증 완료 (§9 참고) |
 | 2026-09-15 | `align_api_schema` 적용 (컬럼 5개). `supabase migration list`로 로컬·원격 버전 일치 확인 |
+| 2026-09-18 | `add_story_intro` 적용 |
+| 2026-09-19 | `add_emotion_scores` 적용. `supabase migration list --linked`로 원격 6개 모두 일치 확인 (2026-09-19) |
 
 ---
 
@@ -402,6 +413,6 @@ SQL 에디터로 프로덕션 스키마를 직접 고치지 않는다. 마이그
 이 스키마 작업의 선행 조건은 아니지만, 서비스 오픈 전 확정이 필요하다.
 
 1. 만료 후 캐시·백업 삭제 완료 허용 시간 (DFD §10-1)
-2. 외부 AI 제공자의 요청 보관·학습 정책, 무보관 옵션 적용 여부 (DFD §10-2, §10-3)
+2. ~~외부 AI 제공자의 요청 보관·학습 정책~~ → OpenAI `store=False` 적용으로 해소 (2026-09-14). 남은 것은 제공자 측 안전 모니터링 보관 여부 확인뿐이다
 3. 작성 중 임시 저장을 브라우저 로컬에 둘지 여부 (DFD §10-4 — 서버 무저장은 확정)
 4. Supabase 프로젝트의 백업 보존 주기 확인

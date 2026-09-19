@@ -6,7 +6,7 @@
 
 > 인원: 동년, 상균, 예진, 승희
 
-> 최종 수정: 2026-09-12 · 상태: Accepted
+> 최종 수정: 2026-09-19 (배포·CI 구현 대조) · 상태: Accepted
 
 이 문서는 "왜 이렇게 정했는가"를 남긴다. 새 팀원은 이 문서만 읽으면
 구조와 그 이유를 이해할 수 있어야 한다. **제품 방향·기능 기획은 이 문서가 아니라
@@ -57,6 +57,11 @@
   오히려 커진다**. 우리 규모(2주·얇은 API·I/O-bound)엔 FastAPI가 "가벼움과 기본기"의
   균형점.
 
+**구현 후 보정 (2026-09-19).** ① 라우트는 전부 동기 `def`다. 블로킹 제공자 호출을
+FastAPI 스레드풀에 넘기는 편이 단순해서다(`API_Design.md` A-2). async 이점은 실제로
+쓰지 않는다. ② 감정 이미지 왜곡(OpenCV·NumPy)이 들어오면서 **CPU를 쓰는 경로가
+생겼다** — 워커 수와 응답 시간을 볼 때 이 점을 함께 고려해야 한다.
+
 **프로젝트에 주는 실이득.** ① async로 I/O-bound에 맞음, ② Pydantic 타입 검증이
 잘못된 입력을 자동 차단(주니어 실수 방어), ③ 자동 OpenAPI 문서(`/docs`)로
 프론트-백 API 계약이 코드에서 바로 나와 4명 병렬 작업·온보딩이 빨라짐.
@@ -98,10 +103,11 @@
 
 ---
 
-## 5. CI/CD — GitHub-hosted 빌드 + GHCR + SSH 배포
+## 5. CI/CD — GitHub-hosted 빌드 + GHCR + Tailscale SSH 배포
 
-**결정.** PR엔 CI(lint·build), `main` 머지 시 GitHub-hosted 러너가 이미지를
-빌드해 **GHCR**에 push → **SSH로 서버 접속**해 pull·재기동.
+**결정.** PR엔 CI(lint·test·build), `main` 머지 시 GitHub-hosted 러너가 이미지를
+빌드해 **GHCR**에 push → **Tailscale OAuth로 tailnet에 접속한 뒤 SSH**로 서버에 들어가
+pull·재기동. 서버는 공개 SSH 포트를 열지 않는다.
 
 **대안: self-hosted runner(서버에 러너 상주).**
 
@@ -109,13 +115,16 @@
 | | GitHub-hosted + SSH (채택) | self-hosted runner |
 |---|---|---|
 | 서버 부담 | 빌드는 클라우드, 서버는 pull만 | 빌드가 서버 리소스 점유 |
-| 시크릿 | SSH 개인키 + GHCR pull PAT 관리 | 시크릿 최소(러너가 곧 배포) |
+| 시크릿 | SSH 개인키 + Tailscale OAuth 관리 | 시크릿 최소(러너가 곧 배포) |
 | 보안 | 서버에 러너 미상주(표면 작음) | 러너 뚫리면 서버 노출, fork PR 위험 |
 | 빌드 속도 | 캐시 재구성(GHA 캐시로 완화) | 서버 레이어 캐시로 빠름 |
 
 **근거.** 서버에 상시 러너를 두지 않아 공격 표면이 작고 운영이 단순.
-빌드/실행 환경이 분리돼 서버는 "받아서 띄우기"만 함. SSH 키·PAT 관리
-부담은 시크릿 6개로 감당 가능한 수준.
+빌드/실행 환경이 분리돼 서버는 "받아서 띄우기"만 함.
+
+**실제 시크릿 5개** — `TS_OAUTH_CLIENT_ID`, `TS_OAUTH_CLIENT_SECRET`, `SSH_HOST`,
+`SSH_USER`, `SSH_PRIVATE_KEY`. GHCR 로그인은 Actions가 자동 발급하는 `GITHUB_TOKEN`을
+서버로 전달해 쓴다(별도 PAT 없음).
 
 ---
 
@@ -152,8 +161,8 @@ Auth + Storage)를 사용한다.
 부분은 JSONB로 유연하게 담을 수 있어 모델 미확정 상황에 맞다는 기존 근거는 그대로
 유효함 — Supabase도 Postgres이므로 이 이점을 동일하게 가져감.
 
-**후속 작업.** Supabase 프로젝트 미생성(2026-09-08 기준) → 다음 진행 시 프로젝트
-생성, 연결 문자열을 백엔드 `.env`(커밋 안 됨)에 배선 필요.
+**후속 작업 — 완료.** 2026-09-12에 프로젝트를 만들고 마이그레이션을 최초 적용했다.
+연결 문자열은 `backend/.env`로 주입한다(§11). 적용 이력은 `Supabase_Schema_Design.md` §7.
 
 <details>
 <summary>이전 결정(기각됨) — 자체 서버 Postgres에 새 DB + 전용 유저</summary>
@@ -189,7 +198,7 @@ SQLite(동시 쓰기 취약)와 MongoDB(관계·정합성을 앱이 떠안아야
 **결정.** GitHub Container Registry.
 
 **근거.** 코드·CI가 GitHub에 있어 통합이 자연스럽고, private 이미지 무료.
-Actions의 `GITHUB_TOKEN`으로 push는 무설정. 서버 pull은 `read:packages` PAT 사용.
+push도 pull도 Actions의 `GITHUB_TOKEN`을 쓴다. 배포 잡이 이 토큰을 서버로 넘겨 `docker login`한다.
 
 ---
 
@@ -355,7 +364,7 @@ git reset --hard origin/main
     │  git push (feature/*)
     ▼
   GitHub ── PR 생성 ──▶ [CI: ci.yml]  (GitHub-hosted 러너)
-    │                     ├─ backend: ruff lint + import 검증
+    │                     ├─ backend: uv sync → ruff lint → import 검증 → unittest(backend/tests)
     │                     └─ frontend: npm ci + lint + build
     │                          └─ ✅ 통과해야 머지 가능(main 보호규칙)
     │  리뷰 승인 + squash merge
@@ -365,8 +374,8 @@ git reset --hard origin/main
     │    ├─ backend 이미지 빌드 → GHCR push (:latest, :<sha>)
     │    └─ frontend 이미지 빌드 → GHCR push (:latest, :<sha>)
     │  job2  deploy  (job1 성공 후)
-    │    └─ SSH 접속 → 서버에서:
-    │          docker login ghcr.io (CR_PAT)
+    │    └─ Tailscale 접속 → SSH → 서버에서:
+    │          docker login ghcr.io (GITHUB_TOKEN)
     │          git fetch + reset --hard origin/main   ← 서버를 main의 거울로 (§12)
     │          IMAGE_TAG=<sha> docker compose pull     ← pull 없이 up 하면 옛 이미지가 뜬다
     │          docker compose up -d
@@ -382,7 +391,7 @@ git reset --hard origin/main
 
 ## 미해결/후속 결정
 
-- 인증(로그인) 방식 — 세션 vs JWT, 소셜 로그인 여부 ❓
+- ~~인증(로그인) 방식~~ → **로그인 없음.** `public_token`/`writer_token` 해시 기반 링크 권한으로 확정 (`API_Design.md` §6.1)
 - 마이그레이션 적용 자동화 — `deploy.yml`에 `supabase db push` 스텝을 넣을지 ❓ (§10 참고)
   - §12에서 서버 동기화는 자동화됐으나 **DB 마이그레이션은 여전히 수동**이다
 - ~~LLM 제공자~~ → **OpenAI `gpt-4.1-mini`** 로 구현됨 (`backend/app/core/config.py`, 2026-09-14).
