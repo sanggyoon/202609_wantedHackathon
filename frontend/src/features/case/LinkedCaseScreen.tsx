@@ -31,10 +31,13 @@ export function LinkedCaseScreen({
   token,
   api = liveCaseApi,
   seed,
+  demo = false,
 }: {
   token: string;
   api?: CaseApi;
   seed?: CaseSeed;
+  // 와이어프레임에서만 임시 이미지를 보여준다.
+  demo?: boolean;
 }) {
   const [view, setView] = useState<CaseView | null>(null);
   const [error, setError] = useState<CaseApiError | null>(null);
@@ -206,11 +209,20 @@ export function LinkedCaseScreen({
     if (!cards.A || !cards.B || !view?.content?.report) return null;
     return (
       <>
-        <StartScreen entryMode="result" resultTab="counterclaim" notice={destroyNotice} onStart={() => {}} />
+        <StartScreen
+          entryMode="result"
+          resultTab="counterclaim"
+          emotionA={cards.A.emotion_scores}
+          emotionB={cards.B.emotion_scores}
+          placeholderImages={demo}
+          notice={destroyNotice}
+          onStart={() => {}}
+        />
         <CounterclaimResult
           a={cards.A}
           b={cards.B}
           mine={view.viewer_role}
+          placeholderImages={demo}
           report={
             <MediationPanel>
               <MediationReport

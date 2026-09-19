@@ -2,13 +2,17 @@ import unittest
 from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
+import cv2
+import numpy as np
 from fastapi.testclient import TestClient
 
 from app.core.tokens import hash_token, new_token, token_matches
 from app.db import DatabaseNotConfigured
 from app.main import app
 from app.repositories.cases import CaseRow
+from app.schemas.emotion_warp import EmotionProfile
 from app.schemas.mediation import MediationReport
+from app.services.emotion_warp import PREVIEW_SIZE, render_emotion_preview_png
 
 client = TestClient(app)
 
@@ -30,6 +34,14 @@ def make_case(status="AWAITING_RESPONSE", expires_in_days=7, with_writer=True):
 
 
 EMPTY_CONTENT = {"cards": {}, "report": None, "apology": None}
+
+PROFILE = {
+    "representative_emotion": "서운함",
+    "image": "sadness.png",
+    "scores": [],
+    "axes": {"화남": 0.2, "질투": 0.0, "슬픔": 0.8, "포기": 0.1, "황당": 0.0, "서운함": 0.9},
+    "resolved_by": "ai",
+}
 
 
 class TokenTest(unittest.TestCase):
@@ -339,3 +351,42 @@ class ApologyTest(unittest.TestCase):
     def test_second_submission_is_409(self):
         response = self.post(make_case("APOLOGY_DRAFT"), {"body": "미안해"}, saved=False)
         self.assertEqual(response.status_code, 409)
+
+
+class EmotionImageTest(unittest.TestCase):
+    def get(self, case, cards):
+        content = {"cards": cards, "report": None, "apology": None}
+        with (
+            patch("app.api.cases.repo.find_by_public_token_hash", return_value=case),
+            patch("app.api.cases.repo.load_content", return_value=content),
+        ):
+            return client.get(f"/api/cases/{PUBLIC}/emotion-image")
+
+    def test_returns_png_without_writer_token(self):
+        response = self.get(make_case(), {"A": {"emotion_scores": PROFILE}})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers["content-type"], "image/png")
+        self.assertTrue(response.content.startswith(b"\x89PNG"))
+        # 카톡 크롤러가 다시 받아가도 같은 그림이 나오도록 캐시를 허용한다.
+        self.assertIn("max-age", response.headers["Cache-Control"])
+
+    def test_image_matches_what_the_recipient_sees(self):
+        # 미리보기와 B가 고소장에서 보는 이미지는 같은 렌더러의 같은 결과여야 한다.
+        served = self.get(make_case(), {"A": {"emotion_scores": PROFILE}}).content
+        self.assertEqual(
+            served, render_emotion_preview_png(EmotionProfile.model_validate(PROFILE))
+        )
+
+    def test_preview_is_opaque_and_wide(self):
+        # 카톡은 알파를 살리지 못한다. 투명한 채로 나가면 배경이 검게 찍힌다.
+        served = self.get(make_case(), {"A": {"emotion_scores": PROFILE}}).content
+        image = cv2.imdecode(np.frombuffer(served, np.uint8), cv2.IMREAD_UNCHANGED)
+        self.assertEqual((image.shape[1], image.shape[0]), PREVIEW_SIZE)
+        self.assertEqual(image.shape[2], 3)
+
+    def test_case_without_shared_emotion_has_no_image(self):
+        self.assertEqual(self.get(make_case(), {"A": {"emotion_scores": None}}).status_code, 404)
+
+    def test_draft_and_expired_cases_are_not_served(self):
+        self.assertEqual(self.get(make_case("DRAFT"), {}).status_code, 404)
+        self.assertEqual(self.get(make_case(expires_in_days=-1), {}).status_code, 410)

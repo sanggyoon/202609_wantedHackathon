@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui";
 import { EmotionWarpImage } from "@/features/report/EmotionWarpImage";
@@ -60,9 +60,15 @@ export function StartScreen({
   ),
   busy = false,
   emotion,
+  emotionA,
+  emotionB,
+  placeholderImages = false,
   onStart,
 }: {
+  placeholderImages?: boolean;
   emotion?: EmotionProfile | null;
+  emotionA?: EmotionProfile | null;
+  emotionB?: EmotionProfile | null;
   entryMode?: EntryMode;
   resultTab?: ResultEnding;
   notice?: ReactNode;
@@ -70,6 +76,16 @@ export function StartScreen({
   onStart: (ending?: ResultEnding) => void;
 }) {
   const c = copy[entryMode];
+  // 결과 화면은 항상 최상단(이미지)에서 시작한다.
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    if (entryMode !== "result") return;
+    window.scrollTo(0, 0);
+    setScrolled(false);
+    const onScroll = () => setScrolled(window.scrollY > 24);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [entryMode, resultTab]);
   return (
     <>
       <section className="hero">
@@ -91,8 +107,25 @@ export function StartScreen({
                 dragElastic={0.6}
                 dragSnapToOrigin
               >
-                <div className="doc-half plaintiff">원고</div>
-                <div className="doc-half defendant">피고</div>
+                <div className="doc-half plaintiff">
+                  {emotionA ? (
+                    <EmotionWarpImage profile={emotionA} />
+                  ) : placeholderImages ? (
+                    // 와이어프레임 전용 임시 이미지
+                    <img src="/images/anger.png" alt="" className="paper-image" />
+                  ) : (
+                    "원고"
+                  )}
+                </div>
+                <div className="doc-half defendant">
+                  {emotionB ? (
+                    <EmotionWarpImage profile={emotionB} />
+                  ) : placeholderImages ? (
+                    <img src="/images/sadness.png" alt="" className="paper-image" />
+                  ) : (
+                    "피고"
+                  )}
+                </div>
               </motion.div>
             </div>
           )
@@ -104,6 +137,38 @@ export function StartScreen({
           <div className="paper doc font-point" aria-hidden="true">
             고소장
           </div>
+        )}
+        {entryMode === "result" && (
+          <motion.div
+            className="scroll-hint-dock"
+            initial={false}
+            animate={scrolled ? { opacity: 0, y: 16 } : { opacity: 1, y: 0 }}
+            transition={{ duration: 0.35, ease: "easeOut" }}
+            aria-hidden={scrolled}
+          >
+          <p className="scroll-hint">
+          <motion.span
+            className="scroll-hint-label"
+            animate={{ y: [0, -5, 0, 5, 0] }}
+            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+          >
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+            스크롤해서 보기
+          </motion.span>
+          </p>
+          </motion.div>
         )}
         <small>
           {c.label.split("\n").map((line, i) => (

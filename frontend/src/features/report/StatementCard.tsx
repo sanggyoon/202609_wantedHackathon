@@ -31,7 +31,7 @@ export function StatementCard({
       )}
       <EmotionWarpImage profile={data.emotion_scores} />
       <h3>사건명</h3>
-      <h2>「{title}」</h2>
+      <h2 className="font-point">「{title}」</h2>
       <h3>신청인 · 상대방</h3>
       <p>
         신청인 {side} · 상대방 {other}

@@ -168,6 +168,7 @@ export function Wireframe() {
           token={DEMO_TOKEN}
           api={api}
           seed={demoSeed(scene)}
+          demo
         />
       ) : (
         <div key={`${view}:${run}`} className="screen">

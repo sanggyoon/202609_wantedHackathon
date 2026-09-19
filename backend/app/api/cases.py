@@ -1,6 +1,7 @@
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Header, HTTPException, Response
+from pydantic import ValidationError
 
 from app.core.tokens import hash_token, new_token, token_matches
 from app.db import DatabaseNotConfigured
@@ -15,7 +16,9 @@ from app.schemas.case import (
     available_actions,
 )
 from app.schemas.complaint import SharedStatement
+from app.schemas.emotion_warp import EmotionProfile
 from app.schemas.mediation import MediationRequest
+from app.services.emotion_warp import render_emotion_preview_png
 from app.services.mediation import generate_mediation
 
 router = APIRouter(prefix="/cases", tags=["cases"])
@@ -64,6 +67,40 @@ def read(
         expires_at=case.expires_at,
         available_actions=available_actions(case.status, role),
         content=content,
+    )
+
+
+@router.get("/{public_token}/emotion-image")
+def emotion_image(public_token: str) -> Response:
+    """A의 고소장 감정 이미지. 카톡 링크 미리보기(og:image)가 이 주소를 가져간다.
+
+    크롤러는 헤더를 보낼 수 없으므로 작성 토큰 없이 공개 토큰만으로 연다.
+    B가 링크로 볼 수 있는 내용과 같은 범위이고, 접수 전·만료 사건은 내주지 않는다.
+    """
+    case = _load(public_token)
+    if _expired(case):
+        raise HTTPException(status_code=410, detail="Case expired", headers=NO_STORE)
+    if case.status == "DRAFT":
+        raise HTTPException(status_code=404, detail="Case not found", headers=NO_STORE)
+    card = repo.load_content(case.id)["cards"].get("A") or {}
+    scores = card.get("emotion_scores")
+    # A가 감정을 공유하지 않으면 카드에도 이미지가 없다. 미리보기만 따로 만들지 않는다.
+    if not scores:
+        raise HTTPException(status_code=404, detail="No emotion image", headers=NO_STORE)
+    try:
+        profile = EmotionProfile.model_validate(scores)
+    except ValidationError:
+        raise HTTPException(status_code=404, detail="No emotion image", headers=NO_STORE) from None
+    try:
+        content = render_emotion_preview_png(profile)
+    except Exception:
+        raise HTTPException(
+            status_code=503, detail="Emotion image unavailable", headers=NO_STORE
+        ) from None
+    return Response(
+        content=content,
+        media_type="image/png",
+        headers={"Cache-Control": "public, max-age=3600"},
     )
 
 

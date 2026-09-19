@@ -9,7 +9,9 @@ export function CounterclaimResult({
   b,
   mine,
   report,
+  placeholderImages = false,
 }: {
+  placeholderImages?: boolean;
   a: Statement;
   b: Statement;
   mine: "A" | "B";
@@ -20,6 +22,13 @@ export function CounterclaimResult({
       <Heading label="양측 진술 대질" title="다른 마음을, 나란히.">
         두 분이 각자 무엇을 바랐는지, 제가 곁에서 함께 짚어드릴게요.
       </Heading>
+      {/* 와이어프레임 전용 임시 결과 이미지(감정 이미지 8종 중 하나씩) */}
+      {placeholderImages && (
+        <div className="result-image-pair">
+          <img src="/images/anger.png" alt="A 측 결과 이미지(임시)" />
+          <img src="/images/sadness.png" alt="B 측 결과 이미지(임시)" />
+        </div>
+      )}
       <div className="report-grid">
         <StatementCard side="A" data={a} mine={mine === "A"} />
         <StatementCard side="B" data={b} mine={mine === "B"} />
