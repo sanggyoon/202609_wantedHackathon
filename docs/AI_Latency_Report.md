@@ -154,10 +154,10 @@ Measure-Command { Invoke-RestMethod -Uri http://localhost:8000/api/mediation/rep
 
 | 경로 | 클라이언트 제한 |
 | --- | --- |
-| 대화 | 65초 (`useConversation.ts`) — **Nginx 60초보다 길다** |
+| 대화 | 55초 (`useConversation.ts`) — Nginx 60초 컷보다 먼저 끊어 재시도 안내를 보여준다 (2026-09-19 조정) |
 | 중재(체험) | 35초 (`MediationSummary.tsx`) |
 | 감정 프로파일·이미지 | 30초 / 제한 없음 (`lib/api/emotionWarp.ts`) |
 | 사건 저장 (B 맞고소) | 60초 (`lib/api/cases.ts`) |
 
-**남은 점검:** 대화 API의 2회 연속 호출(최대 50초)과 클라이언트 65초가 Nginx 60초 컷과 어긋난다.
-운영에서 실측이 필요하다.
+**남은 점검:** 대화 API는 한 요청에서 AI를 2회 연속 부르므로 최악 50초다. 클라이언트는 55초에서
+끊도록 맞췄지만, 서버 `proxy_read_timeout`(기본 60초)을 90초 정도로 올릴지는 운영 실측 후 정한다.

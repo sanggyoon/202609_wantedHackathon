@@ -232,7 +232,7 @@ export function LiveConversationScreen({
         </form>
       )}
       {state?.readyToGenerate && chat.editing === null && (
-        <Notice>
+        <Notice role="status">
           필요한 내용이 모였어요. 초안을 확인하거나 위의 ‘진술 수정’으로 내용을
           고칠 수 있어요.
         </Notice>
@@ -255,7 +255,7 @@ export function LiveConversationScreen({
           </div>
         </section>
       )}
-      {profileError && <Notice>{profileError}</Notice>}
+      {profileError && <Notice role="alert">{profileError}</Notice>}
       {state?.readyToGenerate && (
         <Button
           disabled={

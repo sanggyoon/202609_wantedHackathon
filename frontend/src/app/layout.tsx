@@ -1,8 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 export const metadata: Metadata = {
-  title: "애정 지방법원 · 와이어프레임",
-  description: "서운한 마음을 귀여운 고소장으로 전하는 서비스의 화면 초안",
+  title: "애정 지방법원",
+  description: "서운했던 마음을 귀여운 고소장으로 정리해 링크 하나로 전하는 서비스",
   robots: { index: false, follow: false },
 };
 export const viewport: Viewport = {

@@ -133,7 +133,6 @@ frontend/src/
       writerSession.ts          # 작성 권한 보관 (localStorage)
       StartCase.tsx             # 제품 홈 — 시작화면 1 + 사건 생성
       StartScreen.tsx           # 시작화면 1/2/3 (표시 전용)
-      ShareSelectScreen.tsx     # 미사용 — 공유 선택 단계 제거 후 남은 파일
       screens/                  # SummonsSent, SummonsArrived, Waiting, CounterclaimResult, ApologyResult, CaseGone
     conversation/
       LiveConversationScreen.tsx, useConversation.ts, ConversationScreen.tsx, types.ts
@@ -228,8 +227,9 @@ frontend/src/
 
 - 채팅 화면은 새 턴·대기·오류마다 **항상 맨 아래로 스크롤한다.** 과거 대화를 읽는 중인지 보고
   억제하는 처리는 없다.
-- `body.chat-open` 규칙이 `.screen > .notice`를 숨긴다. 그래서 채팅 중에는 비저장 안내와
-  **대화 오류 문구가 화면에 보이지 않는다.** 오류·안내를 채팅 영역 안으로 옮겨야 한다.
+- `body.chat-open` 규칙은 **role이 없는** `.screen > .notice`만 숨긴다(2026-09-19 수정).
+  대화 실패·감정 분석 실패는 `role="alert"`, 작성 완료 안내는 `role="status"`로 두어
+  채팅 중에도 보인다. 배경 설명(모드·비저장 안내)은 그대로 접는다.
 - `prefers-reduced-motion` 규칙이 아직 없다.
 - 검색 색인 차단은 사건 페이지뿐 아니라 `layout.tsx`에서 **사이트 전체**에 걸려 있다.
 
@@ -265,7 +265,7 @@ frontend/src/
 > 화면 표시용으로 합칠 때는 `types.ts`의 `feelingText()`를 쓴다 — 저장 형태가 아니다.
 >
 > 공유 항목 선택 화면은 2026-09-18에 흐름에서 빠졌다(대화 → 검토로 직행).
-> `ShareSelectScreen.tsx`는 어디에서도 쓰지 않는 파일로 남아 있다.
+> 쓰이지 않던 `ShareSelectScreen.tsx`는 2026-09-19에 삭제했다.
 
 다음 항목은 레이아웃 설계를 막지 않지만 실제 API 연결 및 서비스 완료 전에 확정해야 한다.
 
@@ -279,6 +279,10 @@ frontend/src/
 - A/B 색상 토큰 (현재는 "내가 쓴 고소장" 배지로만 구분)
 - 위험 내용 처리 문구와 탐지 연결
 - 링크 폐기와 작성 중 임시 복구 제공 여부
-- 화면에 남은 "7일" 고정 문구를 서버 `expires_at` 기준으로 통일
+- 전송 버튼 터치 영역(현재 40×40, 기준 48×48)
+- 검색 색인 차단 범위 — 지금은 `layout.tsx`에서 사이트 전체를 막는다. 홈 공개 여부를 정해야 한다
+
+사건이 있는 화면의 보관 기한은 서버 `expires_at`만 쓰도록 정리했다(2026-09-19). 사건이 없는
+화면(홈·소환장 진입)의 "7일 후 파기"는 제도 설명이라 그대로 둔다.
 
 만료 화면은 서버의 `expires_at`을 표시하고 프론트에서 임의로 기준점을 계산하지 않는다. 미정 기능을 확정 기능처럼 UI에 추가하지 않는다.
