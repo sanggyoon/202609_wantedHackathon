@@ -1,5 +1,9 @@
 # 문철빵 · 애정 지방법원
 
+| 대표 이미지 |
+| :---: |
+|  |
+
 연인에게 서운했던 일을 AI와 이야기하면 **장난스럽고 귀여운 고소장**으로 정리해 **링크 하나**로
 전달하고, 상대가 같은 링크에서 **사과하거나 맞고소**한 뒤 두 사람의 마음을 나란히 보게 하는
 감정 전달 서비스다. 로그인이 없고, 결과물은 7일 뒤 파기된다.
@@ -12,35 +16,49 @@
 
 ## 동작 흐름
 
+```mermaid
+flowchart TD
+    subgraph SA["A · 신청인"]
+        A1(["홈에서 시작하기"]) --> A2["사건 생성<br/>/case/{public_token} 으로 이동<br/>writer_token은 A 브라우저에만 보관"]
+        A2 --> A3["밤톨과 대화<br/>사건 · 감정과 이유 · 바라는 점 수집"]
+        A3 --> A4["감정 채점 1회<br/>대표 감정 · 왜곡 이미지 결정"]
+        A4 -.->|동률| A4Q["둘 중 어느 쪽? 한 번 질문"] -.-> A5
+        A4 --> A5["고소장 검토<br/>AI가 죄명 · 한 줄 요약 · 도입문 생성<br/>직접 수정 가능"]
+        A5 -->|고소장 접수하기| A6["소환장, 준비됐어요<br/>링크 복사 · 공유 → 상대 답변 대기"]
+    end
+
+    A6 ==>|같은 링크| B1
+
+    subgraph SB["B · 상대방"]
+        B1["소환장 도착<br/>도입문 → 고소장 펼치기"] --> B2{"어떻게 답할까?"}
+        B2 -->|내가 미안| B3["사과문 직접 작성<br/>AI가 대신 쓰지 않음"]
+        B2 -->|나도 할 말 있음| B4["밤톨과 대화<br/>→ 감정 채점 → 맞고소장 검토"]
+        B3 -.->|제출 전 다시 고르기| B2
+        B4 -.->|제출 전 다시 고르기| B2
+    end
+
+    B3 -->|제출 = 선택 확정| R1["화해 성립<br/>사과문 + 종결 안내"]
+    B4 -->|제출 = 선택 확정<br/>서버가 중재 리포트 생성| R2["양측 진술 대질<br/>A · B 카드 + 중재자의 정리"]
+    R1 --> END(["두 사람이 같은 링크에서 함께 본다<br/>답변 시각 + 7일 뒤 자동 파기"])
+    R2 --> END
 ```
-A(신청인)                                  B(상대방)
-────────────────────────────────────────────────────────────
-홈에서 "시작하기"
-  └ 사건 생성 → /case/<public_token> 으로 이동
-      (작성 권한 writer_token은 A 브라우저에만 보관)
 
-밤톨과 대화 (채팅)
-  └ 사건 / 감정과 이유 / 바라는 점이 모이면 초안 준비 완료
-  └ 감정 채점 1회 → 대표 감정·왜곡 이미지 결정
-      (동률이면 "둘 중 어느 쪽?" 한 번 질문)
+사건 상태(`cases.status`)는 같은 URL 안에서 아래처럼 바뀐다. 화면은 상태와 보는 사람(A/B)에 따라
+달라진다.
 
-고소장 검토
-  └ 죄명·한 줄 요약·도입문을 AI가 생성 → 직접 수정 가능
-  └ "고소장 접수하기"  ─────────────────▶  같은 링크를 열면
-                                            소환장 도착 화면
-"소환장, 준비됐어요"                          (도입문 → 고소장 펼치기)
-  └ 링크 복사·공유                          
-  └ 상대 답변 대기                           "내가 미안"  또는  "나도 할 말 있음"
-                                                │                    │
-                                           사과문 작성          밤톨과 대화 →
-                                                │              맞고소장 검토
-                                                └────── 제출 ───────┘
-                                                (제출 시점에 선택 확정)
-        ▼                                            ▼
-   화해 성립                                   양측 진술 대질
-   (사과문 + 종결 안내)                    (A·B 카드 + 중재자의 정리)
-        └───────── 두 사람이 같은 링크에서 함께 본다 ─────────┘
-                      7일 뒤 자동 파기
+```mermaid
+stateDiagram-v2
+    [*] --> DRAFT: A 시작
+    DRAFT --> AWAITING_RESPONSE: A 고소장 접수
+    AWAITING_RESPONSE --> APOLOGY_DRAFT: B 사과 선택
+    AWAITING_RESPONSE --> COUNTER_DRAFT: B 맞고소 선택
+    APOLOGY_DRAFT --> APOLOGY_COMPLETED: 사과문 제출
+    COUNTER_DRAFT --> COUNTER_COMPLETED: 맞고소장 + 중재 리포트 저장
+    DRAFT --> EXPIRED: 생성 + 7일
+    AWAITING_RESPONSE --> EXPIRED: 생성 + 7일
+    APOLOGY_COMPLETED --> EXPIRED: 답변 + 7일
+    COUNTER_COMPLETED --> EXPIRED: 답변 + 7일
+    EXPIRED --> [*]
 ```
 
 **핵심 규칙**
@@ -56,6 +74,23 @@ A(신청인)                                  B(상대방)
 
 ---
 
+## 서비스 화면
+
+| 화면 | 설명 | 이미지 |
+| --- | --- | :---: |
+| 시작 | 서비스 소개, 시작하기 |  |
+| A 대화 | 밤톨과 채팅하며 사건 · 감정 · 바라는 점 정리 |  |
+| 고소장 검토 | 죄명 · 한 줄 요약 · 도입문 확인과 수정, 감정 이미지 |  |
+| 소환장 발송 | 링크 복사 · 공유, 상대 답변 대기 |  |
+| 소환장 도착 (B) | 도입문과 고소장 펼치기, 사과 / 맞고소 선택 |  |
+| 사과문 작성 | B가 직접 쓰는 사과문, 미리보기 |  |
+| 맞고소 대화 · 검토 | B가 밤톨과 대화해 맞고소장 작성 |  |
+| 화해 성립 | 사과문과 종결 안내 |  |
+| 양측 진술 대질 | A · B 카드와 중재자의 정리 |  |
+| 만료 | 사건 내용 미노출, 새 사건 시작 |  |
+
+---
+
 ## 기술 구성
 
 | 영역 | 사용 기술 |
@@ -67,54 +102,6 @@ A(신청인)                                  B(상대방)
 | 배포 | GitHub Actions → GHCR → Tailscale 경유 SSH → `docker compose` |
 
 결정 배경은 [`docs/Tech_ADR.md`](docs/Tech_ADR.md)에 있다.
-
----
-
-## 로컬 실행
-
-### 1. 백엔드
-
-```bash
-cd backend
-uv sync
-uv run uvicorn app.main:app --reload --port 8000
-```
-
-- Swagger UI: http://localhost:8000/api/docs
-- `backend/.env`에 `OPENAI_API_KEY`, `DATABASE_URL`을 둔다. 키가 없으면 로컬 규칙 모드로 동작한다.
-- 자세한 내용은 [`backend/README.md`](backend/README.md).
-
-### 2. 프론트엔드
-
-```bash
-cd frontend
-npm ci
-npm run dev
-```
-
-http://localhost:3000 에서 시작한다. 개발 서버가 `/api/*`를 `127.0.0.1:8000`으로 넘기므로
-브라우저에 키가 필요 없다.
-
-### 3. 링크 흐름까지 확인하려면 DB가 필요하다
-
-```bash
-supabase start                 # Docker 필요. 마이그레이션이 자동 적용된다
-cd backend && DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres \
-  uv run uvicorn app.main:app --port 8000
-```
-
-A와 B를 한 브라우저에서 나눠 보려면 A는 `localhost:3000`, B는 `127.0.0.1:3000`으로 연다
-(출처가 달라 작성 권한 저장소가 분리된다). 이때 `next.config.ts`에
-`allowedDevOrigins: ["127.0.0.1"]`를 임시로 넣어야 한다 — 커밋하지 않는다.
-
-### 검사
-
-```bash
-cd backend  && uv run ruff check . && uv run python -m unittest discover -s tests -t tests -p 'test_*.py'
-cd frontend && npx tsc --noEmit && npm run lint && npm run build && npm test
-```
-
-CI(`.github/workflows/ci.yml`)가 PR마다 같은 검사를 돌린다.
 
 ---
 
@@ -183,6 +170,7 @@ CI(`.github/workflows/ci.yml`)가 PR마다 같은 검사를 돌린다.
 | [Story_Intro_Design](docs/Story_Intro_Design.md) | 받은 고소장 도입문 생성 규칙 |
 | [Emotion_Image_Warp_PRD](docs/Emotion_Image_Warp_PRD.md) | 감정 채점과 이미지 왜곡 사양 (구현 기준) |
 | [Emotion_Image_Warp_Implementation_Plan](docs/Emotion_Image_Warp_Implementation_Plan.md) | 위 기능의 구현 계획 |
+| [Emotion_Image_Warp_Integration](docs/Emotion_Image_Warp_Integration.md) | 감정 이미지 연동 방식 검토 기록 (착수 전) |
 | [AI_Latency_Report](docs/AI_Latency_Report.md) | AI 응답 시간 측정과 동기 방식 유지 판단 |
 
 작업 기록은 [`docs/progress/`](docs/progress), 설계·구현 계획서는
