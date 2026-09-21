@@ -1,8 +1,8 @@
-# 문철빵 · 애정 지방법원
+# 애정 지방법원
 
 | 대표 이미지 |
 | :---: |
-|  |
+|  <img width="1488" height="1080" alt="대표이미지" src="https://github.com/user-attachments/assets/a4adcb3a-8992-42d0-8f6a-6f885ef7a331" /> |
 
 연인에게 서운했던 일을 AI와 이야기하면 **장난스럽고 귀여운 고소장**으로 정리해 **링크 하나**로
 전달하고, 상대가 같은 링크에서 **사과하거나 맞고소**한 뒤 두 사람의 마음을 나란히 보게 하는
@@ -78,16 +78,16 @@ stateDiagram-v2
 
 | 화면 | 설명 | 이미지 |
 | --- | --- | :---: |
-| 시작 | 서비스 소개, 시작하기 |  |
-| A 대화 | 밤톨과 채팅하며 사건 · 감정 · 바라는 점 정리 |  |
-| 고소장 검토 | 죄명 · 한 줄 요약 · 도입문 확인과 수정, 감정 이미지 |  |
-| 소환장 발송 | 링크 복사 · 공유, 상대 답변 대기 |  |
-| 소환장 도착 (B) | 도입문과 고소장 펼치기, 사과 / 맞고소 선택 |  |
-| 사과문 작성 | B가 직접 쓰는 사과문, 미리보기 |  |
-| 맞고소 대화 · 검토 | B가 밤톨과 대화해 맞고소장 작성 |  |
-| 화해 성립 | 사과문과 종결 안내 |  |
-| 양측 진술 대질 | A · B 카드와 중재자의 정리 |  |
-| 만료 | 사건 내용 미노출, 새 사건 시작 |  |
+| 시작 | 서비스 소개, 시작하기 | <img width="250" alt="(iPhone 14 Pro Max)" src="https://github.com/user-attachments/assets/f993b5a3-cc41-4e9f-bcd1-f1e7449bf28e" /> |
+| A 대화 | 밤톨과 채팅하며 사건 · 감정 · 바라는 점 정리 | <img width="250" alt="(iPhone 14 Pro Max)(2)" src="https://github.com/user-attachments/assets/c89745d7-a42b-45a2-a93e-3653fd51a119" /> |
+| 고소장 검토 | 죄명 · 한 줄 요약 · 도입문 확인과 수정, 감정 이미지 | <img width="250" alt="(iPhone 14 Pro Max)(4)" src="https://github.com/user-attachments/assets/0efda6b5-8390-43c7-a609-9c6df4d68a30" /> |
+| 소환장 발송 | 링크 복사 · 공유, 상대 답변 대기 | <img width="250" alt="(iPhone 14 Pro Max)(6)" src="https://github.com/user-attachments/assets/2ec1b287-f151-4934-b14f-03d96d7b3ff8" /> |
+| 소환장 도착 (B) | 도입문과 고소장 펼치기, 사과 / 맞고소 선택 | <img width="250" alt="(iPhone 14 Pro Max)(7)" src="https://github.com/user-attachments/assets/5e880a3b-9ff7-4117-9f3e-766a507f9339" /> <img width="250" alt="(iPhone 14 Pro Max)(8)" src="https://github.com/user-attachments/assets/f1b88010-0a9c-490d-b302-a8df5938abaa" /> |
+| 사과문 작성 | B가 직접 쓰는 사과문, 미리보기 | <img width="250" alt="(iPhone 14 Pro Max)(10)" src="https://github.com/user-attachments/assets/97a7667c-8096-465d-a3b0-5ac32edf2784" /> |
+| 맞고소 대화 · 검토 | B가 밤톨과 대화해 맞고소장 작성 | <img width="250" alt="(iPhone 14 Pro Max)(11)" src="https://github.com/user-attachments/assets/d10e7d44-8b18-4c30-8c1e-e9b5f9204e73" /> |
+| 화해 성립 | 사과문과 종결 안내 | <img width="250" alt="(iPhone 14 Pro Max)(14)" src="https://github.com/user-attachments/assets/e47d5c16-e9d6-4332-b848-7de520ffb608" /> |
+| 양측 진술 대질 | A · B 카드와 중재자의 정리 | <img width="250" alt="(iPhone 14 Pro Max)(13)" src="https://github.com/user-attachments/assets/2c63921d-33f9-46f0-aad5-f64359c61ae5" /> |
+| 만료 | 사건 내용 미노출, 새 사건 시작 | |
 
 ---
 
