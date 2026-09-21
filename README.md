@@ -76,18 +76,71 @@ stateDiagram-v2
 
 ## 서비스 화면
 
-| 화면 | 설명 | 이미지 |
-| --- | --- | :---: |
-| 시작 | 서비스 소개, 시작하기 | <img width="250" alt="(iPhone 14 Pro Max)" src="https://github.com/user-attachments/assets/f993b5a3-cc41-4e9f-bcd1-f1e7449bf28e" /> |
-| A 대화 | 밤톨과 채팅하며 사건 · 감정 · 바라는 점 정리 | <img width="250" alt="(iPhone 14 Pro Max)(2)" src="https://github.com/user-attachments/assets/c89745d7-a42b-45a2-a93e-3653fd51a119" /> |
-| 고소장 검토 | 죄명 · 한 줄 요약 · 도입문 확인과 수정, 감정 이미지 | <img width="250" alt="(iPhone 14 Pro Max)(4)" src="https://github.com/user-attachments/assets/0efda6b5-8390-43c7-a609-9c6df4d68a30" /> |
-| 소환장 발송 | 링크 복사 · 공유, 상대 답변 대기 | <img width="250" alt="(iPhone 14 Pro Max)(6)" src="https://github.com/user-attachments/assets/2ec1b287-f151-4934-b14f-03d96d7b3ff8" /> |
-| 소환장 도착 (B) | 도입문과 고소장 펼치기, 사과 / 맞고소 선택 | <img width="250" alt="(iPhone 14 Pro Max)(7)" src="https://github.com/user-attachments/assets/5e880a3b-9ff7-4117-9f3e-766a507f9339" /> <img width="250" alt="(iPhone 14 Pro Max)(8)" src="https://github.com/user-attachments/assets/f1b88010-0a9c-490d-b302-a8df5938abaa" /> |
-| 사과문 작성 | B가 직접 쓰는 사과문, 미리보기 | <img width="250" alt="(iPhone 14 Pro Max)(10)" src="https://github.com/user-attachments/assets/97a7667c-8096-465d-a3b0-5ac32edf2784" /> |
-| 맞고소 대화 · 검토 | B가 밤톨과 대화해 맞고소장 작성 | <img width="250" alt="(iPhone 14 Pro Max)(11)" src="https://github.com/user-attachments/assets/d10e7d44-8b18-4c30-8c1e-e9b5f9204e73" /> |
-| 화해 성립 | 사과문과 종결 안내 | <img width="250" alt="(iPhone 14 Pro Max)(14)" src="https://github.com/user-attachments/assets/e47d5c16-e9d6-4332-b848-7de520ffb608" /> |
-| 양측 진술 대질 | A · B 카드와 중재자의 정리 | <img width="250" alt="(iPhone 14 Pro Max)(13)" src="https://github.com/user-attachments/assets/2c63921d-33f9-46f0-aad5-f64359c61ae5" /> |
-| 만료 | 사건 내용 미노출, 새 사건 시작 | |
+<table>
+  <tr>
+    <td align="center" width="240" valign="top">
+      <b>시작</b><br />
+      <img width="200" alt="시작" src="https://github.com/user-attachments/assets/f993b5a3-cc41-4e9f-bcd1-f1e7449bf28e" /><br />
+      <sub>서비스 소개, 시작하기</sub>
+    </td>
+    <td align="center" width="240" valign="top">
+      <b>A 대화</b><br />
+      <img width="200" alt="A 대화" src="https://github.com/user-attachments/assets/c89745d7-a42b-45a2-a93e-3653fd51a119" /><br />
+      <sub>밤톨과 채팅하며 사건 · 감정 · 바라는 점 정리</sub>
+    </td>
+    <td align="center" width="240" valign="top">
+      <b>고소장 검토</b><br />
+      <img width="200" alt="고소장 검토" src="https://github.com/user-attachments/assets/0efda6b5-8390-43c7-a609-9c6df4d68a30" /><br />
+      <sub>죄명 · 한 줄 요약 · 도입문 확인과 수정, 감정 이미지</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="240" valign="top">
+      <b>소환장 발송</b><br />
+      <img width="200" alt="소환장 발송" src="https://github.com/user-attachments/assets/2ec1b287-f151-4934-b14f-03d96d7b3ff8" /><br />
+      <sub>링크 복사 · 공유, 상대 답변 대기</sub>
+    </td>
+    <td align="center" width="240" valign="top">
+      <b>소환장 도착 (B) ①</b><br />
+      <img width="200" alt="소환장 도착 (B) ①" src="https://github.com/user-attachments/assets/5e880a3b-9ff7-4117-9f3e-766a507f9339" /><br />
+      <sub>도입문과 고소장 펼치기</sub>
+    </td>
+    <td align="center" width="240" valign="top">
+      <b>소환장 도착 (B) ②</b><br />
+      <img width="200" alt="소환장 도착 (B) ②" src="https://github.com/user-attachments/assets/f1b88010-0a9c-490d-b302-a8df5938abaa" /><br />
+      <sub>사과 / 맞고소 선택</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="240" valign="top">
+      <b>사과문 작성</b><br />
+      <img width="200" alt="사과문 작성" src="https://github.com/user-attachments/assets/97a7667c-8096-465d-a3b0-5ac32edf2784" /><br />
+      <sub>B가 직접 쓰는 사과문, 미리보기</sub>
+    </td>
+    <td align="center" width="240" valign="top">
+      <b>맞고소 대화 · 검토</b><br />
+      <img width="200" alt="맞고소 대화 · 검토" src="https://github.com/user-attachments/assets/d10e7d44-8b18-4c30-8c1e-e9b5f9204e73" /><br />
+      <sub>B가 밤톨과 대화해 맞고소장 작성</sub>
+    </td>
+    <td align="center" width="240" valign="top">
+      <b>화해 성립</b><br />
+      <img width="200" alt="화해 성립" src="https://github.com/user-attachments/assets/e47d5c16-e9d6-4332-b848-7de520ffb608" /><br />
+      <sub>사과문과 종결 안내</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="240" valign="top">
+      <b>양측 진술 대질</b><br />
+      <img width="200" alt="양측 진술 대질" src="https://github.com/user-attachments/assets/2c63921d-33f9-46f0-aad5-f64359c61ae5" /><br />
+      <sub>A · B 카드와 중재자의 정리</sub>
+    </td>
+    <td align="center" width="240" valign="top">
+      <b>만료</b><br />
+      <sub>사건 내용 미노출, 새 사건 시작</sub>
+    </td>
+    <td></td>
+  </tr>
+</table>
 
 ---
 
